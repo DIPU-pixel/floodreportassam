@@ -1,0 +1,7 @@
+{
+  "_note": "OPTIONAL official figures shown as an 'OFFICIAL: flood reported' ribbon. Copy scripts/frims-template.json here and fill 'date' (YYYY-MM-DD) + 'districts' from the ASDMA FRIMS daily report (frims.asdma.gov.in). Only reports < 48h old are shown; older or empty → nothing. Do NOT put modelled numbers here. district 'name' is matched to the map by slug; add 'districtId' to override.",
+  "date": "",
+  "source": "ASDMA FRIMS",
+  "reportUrl": "https://frims.asdma.gov.in",
+  "districts": []
+}

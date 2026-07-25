@@ -1,0 +1,16 @@
+{
+  "_note": "dangerLevelM and highestFloodLevelM are approximate published CWC gauge values — VERIFY against https://ffs.india-water.gov.in before any public/operational use. Coordinates are approximate station locations.",
+  "attribution": "Gauge stations: Central Water Commission (CWC) Flood Forecasting network. Levels indicative only.",
+  "stations": [
+    { "id": "pandu", "name": "Guwahati (Pandu)", "nameAs": "গুৱাহাটী (পাণ্ডু)", "river": "Brahmaputra", "lat": 26.19, "lng": 91.70, "dangerLevelM": 49.68, "highestFloodLevelM": 51.06 },
+    { "id": "dibrugarh", "name": "Dibrugarh", "nameAs": "ডিব্ৰুগড়", "river": "Brahmaputra", "lat": 27.48, "lng": 94.91, "dangerLevelM": 105.70, "highestFloodLevelM": 106.48 },
+    { "id": "neamatighat", "name": "Neamatighat (Jorhat)", "nameAs": "নিমাটীঘাট (যোৰহাট)", "river": "Brahmaputra", "lat": 26.83, "lng": 94.20, "dangerLevelM": 85.04, "highestFloodLevelM": 86.55 },
+    { "id": "tezpur", "name": "Tezpur", "nameAs": "তেজপুৰ", "river": "Brahmaputra", "lat": 26.63, "lng": 92.80, "dangerLevelM": 65.23, "highestFloodLevelM": 66.06 },
+    { "id": "goalpara", "name": "Goalpara", "nameAs": "গোৱালপাৰা", "river": "Brahmaputra", "lat": 26.17, "lng": 90.62, "dangerLevelM": 36.03, "highestFloodLevelM": 37.71 },
+    { "id": "dhubri", "name": "Dhubri", "nameAs": "ধুবুৰী", "river": "Brahmaputra", "lat": 26.02, "lng": 89.98, "dangerLevelM": 28.62, "highestFloodLevelM": 30.34 },
+    { "id": "badarpur", "name": "Badarpur (AP Ghat)", "nameAs": "বদৰপুৰ", "river": "Barak", "lat": 24.87, "lng": 92.60, "dangerLevelM": 16.30, "highestFloodLevelM": 18.02 },
+    { "id": "golakganj", "name": "Golakganj", "nameAs": "গোলকগঞ্জ", "river": "Gaurang", "lat": 26.10, "lng": 89.85, "dangerLevelM": 33.11, "highestFloodLevelM": 34.50 },
+    { "id": "nt-road", "name": "NT Road Crossing", "nameAs": "এন.টি. ৰোড ক্ৰছিং", "river": "Jia Bharali", "lat": 26.68, "lng": 92.84, "dangerLevelM": 74.53, "highestFloodLevelM": 76.20 },
+    { "id": "numaligarh", "name": "Numaligarh", "nameAs": "নুমলীগড়", "river": "Dhansiri", "lat": 26.62, "lng": 93.72, "dangerLevelM": 78.19, "highestFloodLevelM": 79.90 }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "type": "FeatureCollection",
+  "attribution": "River courses simplified from OpenStreetMap data © OpenStreetMap contributors (ODbL). Schematic — not survey-accurate.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "brahmaputra",
+        "name": "Brahmaputra",
+        "nameAs": "ব্ৰহ্মপুত্ৰ"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [95.65, 27.83],
+          [95.35, 27.70],
+          [95.00, 27.55],
+          [94.80, 27.45],
+          [94.55, 27.20],
+          [94.35, 27.02],
+          [94.20, 26.92],
+          [94.05, 26.80],
+          [93.70, 26.72],
+          [93.30, 26.70],
+          [92.95, 26.62],
+          [92.80, 26.62],
+          [92.45, 26.55],
+          [92.10, 26.35],
+          [91.90, 26.25],
+          [91.75, 26.19],
+          [91.55, 26.11],
+          [91.20, 26.15],
+          [90.90, 26.22],
+          [90.62, 26.16],
+          [90.30, 26.10],
+          [89.98, 26.02],
+          [89.82, 25.92]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "barak",
+        "name": "Barak",
+        "nameAs": "বৰাক"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [93.10, 24.78],
+          [92.98, 24.80],
+          [92.85, 24.83],
+          [92.78, 24.82],
+          [92.68, 24.86],
+          [92.58, 24.87],
+          [92.45, 24.88],
+          [92.35, 24.87],
+          [92.26, 24.83]
+        ]
+      }
+    }
+  ]
+}

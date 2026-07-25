@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#0f172a"/>
+  <!-- safe zone padding for maskable icons -->
+  <g>
+    <!-- water drop -->
+    <path d="M256 96 C 256 96, 152 214, 152 300 a 104 104 0 0 0 208 0 C 360 214, 256 96, 256 96 Z"
+          fill="#38bdf8"/>
+    <!-- highlight -->
+    <path d="M300 268 a 44 44 0 0 1 -44 44" fill="none" stroke="#e0f2fe" stroke-width="14" stroke-linecap="round"/>
+    <!-- river waves -->
+    <g stroke="#1d4ed8" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.9">
+      <path d="M120 392 q 34 -26 68 0 t 68 0 t 68 0 t 68 0"/>
+      <path d="M120 432 q 34 -26 68 0 t 68 0 t 68 0 t 68 0"/>
+    </g>
+  </g>
+</svg>

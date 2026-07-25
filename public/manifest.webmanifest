@@ -1,0 +1,20 @@
+{
+  "name": "Assam Flood Watch",
+  "short_name": "Flood Watch",
+  "description": "Flood risk map for all districts of Assam — modelled from public rainfall and river-discharge data. Informational only.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

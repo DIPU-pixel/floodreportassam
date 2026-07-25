@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+build
+.env*.local
+.env
+
+# build artefacts / caches — must not be committed
+*.tsbuildinfo
+.vercel
+.DS_Store
+npm-debug.log*

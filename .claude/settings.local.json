@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(npx vitest *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{content_type}\\\\n\" \"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/7/55/96\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{content_type}\\\\n\" \"https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/7/55/96\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{content_type}\\\\n\" \"https://basemaps.cartocdn.com/dark_all/7/96/55.png\")",
+      "Bash(npm install *)",
+      "Bash(curl -s -o /tmp/assam.geojson -w \"HTTP %{http_code}, %{size_download} bytes\\\\n\" \"https://raw.githubusercontent.com/udit-001/india-maps-data/main/geojson/states/assam.geojson\")",
+      "Bash(node -e \"const g=require\\('/tmp/assam.geojson'\\); console.log\\('features:',g.features.length\\); console.log\\('sample props:',JSON.stringify\\(g.features[0].properties\\)\\); console.log\\('names:',g.features.map\\(f=>f.properties.district||f.properties.NAME_2||f.properties.name\\).join\\(', '\\)\\)\")",
+      "Bash(curl -s -o /c/Users/ec0033au/AppData/Local/Temp/claude/c--Users-ec0033au-Downloads-assam-flood-map-assam-flood-map/8371dea4-9ca2-4d9c-9995-45305746d10b/scratchpad/assam.geojson https://raw.githubusercontent.com/udit-001/india-maps-data/main/geojson/states/assam.geojson)",
+      "Bash(node -e 'const fs=require\\('\\\\''fs'\\\\''\\); const g=JSON.parse\\(fs.readFileSync\\('\\\\''/c/Users/ec0033au/AppData/Local/Temp/claude/c--Users-ec0033au-Downloads-assam-flood-map-assam-flood-map/8371dea4-9ca2-4d9c-9995-45305746d10b/scratchpad/assam.geojson'\\\\'','\\\\''utf8'\\\\''\\)\\); console.log\\('\\\\''features:'\\\\'',g.features.length\\); console.log\\('\\\\''props:'\\\\'',JSON.stringify\\(g.features[0].properties\\)\\); console.log\\(g.features.map\\(f=>f.properties.district\\).sort\\(\\).join\\('\\\\'' | '\\\\''\\)\\)')",
+      "Bash(curl -s --max-time 40 -G \"https://overpass-api.de/api/interpreter\" --data-urlencode \"data=[out:json][timeout:25];way[waterway=river][name]\\(26.0,91.5,26.4,92.0\\);out geom 5;\" -w \"\\\\nHTTP %{http_code} %{size_download}b %{time_total}s\\\\n\")",
+      "Bash(node scripts/fetch-data.mjs)",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const g=JSON.parse\\(fs.readFileSync\\('public/data/rivers.geojson','utf8'\\)\\);const names=new Set\\(g.features.map\\(f=>f.properties.name.toLowerCase\\(\\)\\)\\);['brahmaputra','barak','subansiri','dikhow','disang','dhansiri','kopili','manas','kameng','bharali'].forEach\\(k=>console.log\\(k, [...names].some\\(n=>n.includes\\(k\\)\\)?'✓':'—MISSING'\\)\\)\")",
+      "Bash(curl -s \"http://localhost:3111/api/rain?lat=26.92&lng=94.74\")",
+      "Bash(node -e \"let s='';process.stdin.on\\('data',d=>s+=d\\).on\\('end',\\(\\)=>{const j=JSON.parse\\(s\\);console.log\\('status:',j.status,'| past48:',j.point.past48hMm,'mm | next72:',j.point.next72hMm,'mm | currentMm:',j.point.currentMm,'| hourly pts:',j.point.forecastHourlyMm?.length\\)}\\)\")",
+      "Bash(curl -s \"http://localhost:3111/api/flood?lat=26.92&lng=94.74\")",
+      "Bash(node -e \"let s='';process.stdin.on\\('data',d=>s+=d\\).on\\('end',\\(\\)=>{const j=JSON.parse\\(s\\);console.log\\('status:',j.status,'| series14:',j.discharge.series14.length,'| todayIndex:',j.discharge.todayIndex,'| trend:',j.discharge.trend,'| peak:',j.discharge.peakDischarge,'m3/s'\\)}\\)\")"
+    ]
+  }
+}

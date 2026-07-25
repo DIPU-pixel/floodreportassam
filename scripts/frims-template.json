@@ -1,0 +1,10 @@
+{
+  "date": "2026-07-25",
+  "source": "ASDMA FRIMS",
+  "reportUrl": "https://frims.asdma.gov.in",
+  "districts": [
+    { "name": "Barpeta", "affectedVillages": 0, "affectedPopulation": 0, "reliefCamps": 0 },
+    { "name": "Dhemaji", "affectedVillages": 0, "affectedPopulation": 0, "reliefCamps": 0 },
+    { "name": "Lakhimpur", "affectedVillages": 0, "affectedPopulation": 0, "reliefCamps": 0 }
+  ]
+}
