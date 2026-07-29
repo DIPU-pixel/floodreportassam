@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLang } from "@/lib/i18n";
+import { useToast } from "@/components/Toast";
 import { currentState, subscribe, unsubscribe, type PushState } from "@/lib/pushClient";
 
 /**
@@ -18,6 +19,7 @@ export default function AlertsButton({
   districtName: string;
 }) {
   const { lang, t } = useLang();
+  const toast = useToast();
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [state, setState] = useState<PushState>("off");
   const [busy, setBusy] = useState(false);
@@ -49,6 +51,10 @@ export default function AlertsButton({
       : await subscribe({ districtId, districtName, lang });
     setState(next);
     setBusy(false);
+    if (next === "on") toast(`${t("alerts.subscribed")} — ${districtName}`, "success");
+    else if (on && next === "off") toast("Alerts off", "info");
+    else if (next === "denied") toast(t("alerts.blocked"), "warning");
+    else if (next === "off" && !on) toast("Couldn’t enable alerts", "error");
   };
 
   if (state === "denied") {

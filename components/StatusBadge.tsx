@@ -49,7 +49,7 @@ export default function StatusBadge({
       </button>
 
       {open && (
-        <div className="pointer-events-auto absolute right-0 top-full z-30 mt-1 w-56 rounded-xl border border-slate-700 bg-slate-900/97 p-2.5 shadow-2xl backdrop-blur">
+        <div className="pointer-events-auto absolute left-0 top-full z-30 mt-1 w-56 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-700 bg-slate-900/97 p-2.5 shadow-2xl backdrop-blur">
           <div className="mb-1 flex items-center justify-between gap-2">
             <span className="flex items-center gap-1.5 text-[11px] font-bold">
               <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />

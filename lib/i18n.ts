@@ -61,6 +61,12 @@ export const STRINGS = {
   "layers.tilt": { en: "3D tilt", as: "ত্ৰিমাত্ৰিক" },
   "layers.floodExtent": { en: "Flood extent", as: "বানৰ বিস্তৃতি" },
 
+  "streetview.button": { en: "Street View", as: "ৰাস্তাৰ দৃশ্য" },
+  "streetview.hint": {
+    en: "Opens Google Maps at this spot — Street View where available.",
+    as: "গুগল মেপত এই ঠাই খোলে — উপলব্ধ ঠাইত ৰাস্তাৰ দৃশ্য।",
+  },
+
   "share.button": { en: "Share", as: "ভাগ কৰক" },
   "share.whatsapp": { en: "WhatsApp", as: "হোৱাটছএপ" },
   "share.copied": { en: "Copied", as: "নকল হ’ল" },

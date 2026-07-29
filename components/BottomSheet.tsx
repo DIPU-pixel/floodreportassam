@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import DragSheet from "@/components/DragSheet";
 import AlertsButton from "@/components/AlertsButton";
+import StreetViewLink from "@/components/StreetViewLink";
+import { useToast } from "@/components/Toast";
 import { RISK_COLORS } from "@/lib/risk";
 import { districtSummaryText, openWhatsApp, shareOrCopy } from "@/lib/share";
 import type { DistrictRisk, FrimsEntry, Town } from "@/lib/types";
@@ -18,23 +19,27 @@ export default function BottomSheet({
   risk,
   frims,
   towns,
+  center,
   onTown,
   onClose,
 }: {
   risk: DistrictRisk | null;
   frims?: FrimsEntry | null;
   towns?: Town[];
+  /** District centre, for the Street View / Open-in-Maps link. */
+  center?: { lng: number; lat: number } | null;
   onTown?: (t: Town) => void;
   onClose: () => void;
 }) {
-  const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const toast = useToast();
   if (!risk) return null;
   const color = RISK_COLORS[risk.level];
 
   const onShare = async () => {
     const result = await shareOrCopy(districtSummaryText(risk, frims), `Assam Flood Watch — ${risk.name}`);
-    setShareMsg(result === "shared" ? "Shared" : result === "copied" ? "Copied to clipboard" : "Copy failed");
-    setTimeout(() => setShareMsg(null), 2000);
+    if (result === "shared") toast("Shared", "success");
+    else if (result === "copied") toast("Copied to clipboard", "success");
+    else toast("Couldn’t share — try again", "error");
   };
 
   return (
@@ -61,7 +66,7 @@ export default function BottomSheet({
               aria-label="Share district summary"
               className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-200 active:bg-slate-700"
             >
-              {shareMsg ?? "Share"}
+              Share
             </button>
             <button
               onClick={onClose}
@@ -159,6 +164,8 @@ export default function BottomSheet({
             </div>
           </div>
         )}
+
+        {center && <StreetViewLink lat={center.lat} lng={center.lng} />}
 
         <AlertsButton districtId={risk.districtId} districtName={risk.name} />
 

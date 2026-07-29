@@ -2,6 +2,7 @@
 
 import DragSheet from "@/components/DragSheet";
 import Sparkline from "@/components/Sparkline";
+import StreetViewLink from "@/components/StreetViewLink";
 import { GAUGE_COLORS, GAUGE_STATUS_LABEL, gaugeStatus } from "@/lib/gauges";
 import { DISCHARGE_STATUS_LABEL, TREND_LABEL } from "@/lib/discharge";
 import type { GaugeStation, GaugeReading, RiverDischargeForecast } from "@/lib/types";
@@ -120,6 +121,8 @@ export default function GaugeSheet({
             <Sparkline values={reading.spark7d} color={color} />
           </div>
         )}
+
+        <StreetViewLink lat={station.lat} lng={station.lng} />
 
         <p className="mt-2 text-[10px] leading-snug text-slate-500">
           Levels approximate — verify against ffs.india-water.gov.in (CWC). Not an official warning; follow

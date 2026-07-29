@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DragSheet from "@/components/DragSheet";
 import AlertsButton from "@/components/AlertsButton";
+import StreetViewLink from "@/components/StreetViewLink";
 import Sparkline from "@/components/Sparkline";
 import { RISK_COLORS } from "@/lib/risk";
 import { GAUGE_COLORS, GAUGE_STATUS_LABEL, gaugeStatus } from "@/lib/gauges";
@@ -117,7 +118,7 @@ export default function MyAreaPanel({
   return (
     <DragSheet onClose={onClose} snap initial="peek" ariaLabel={`My area — ${place.name}`}>
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-800 bg-slate-900/97 p-3">
+      <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-800 bg-slate-900 p-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-400">My area</p>
             <h2 className="truncate text-lg font-bold leading-tight">
@@ -140,6 +141,9 @@ export default function MyAreaPanel({
       </div>
 
       <div className="p-3">
+          {/* Look at this exact spot in Google Maps / Street View. */}
+          <StreetViewLink lat={place.lat} lng={place.lng} />
+
           {/* Plain-language summary */}
           {summary && (
             <div

@@ -535,6 +535,7 @@ export default function Home() {
         risk={selected}
         frims={selectedFrims}
         towns={townsForSelected}
+        center={selectedId ? centroidById.get(selectedId) ?? null : null}
         onTown={pickTown}
         onClose={() => setSelectedId(null)}
       />
