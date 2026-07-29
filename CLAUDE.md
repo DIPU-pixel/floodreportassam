@@ -48,6 +48,14 @@
   14-day discharge series (`todayIndex = 7`) + water **trend**
   (rising/steady/falling vs the past-7-day mean). Also `?lat=&lng=`.
 - `/api/geocode` — Open-Meteo geocoder proxy, filtered to `admin1=Assam`.
+- `/api/health` — uncached probe of both upstreams (LIVE vs DOWN + latency).
+- `/api/og` — social share card (1200×630, edge runtime). Brand-only, no
+  live numbers, so a shared link is never mistaken for a dated warning.
+- `/api/push/vapid` — public VAPID key (503 until keys are configured).
+- `/api/push/subscribe` — POST/DELETE a device's alert subscription.
+- `/api/cron/check` — alert engine (protected by `CRON_SECRET`): rescores
+  every district and web-pushes subscribers whose district is high/severe.
+  Hit it from a scheduler (Vercel Cron / cron-job.org) every ~30–60 min.
 
 ### Risk
 `lib/risk.ts` — 4 named-constant weights summing to 1: observed rain
@@ -55,16 +63,47 @@
 proneness 0.25. Unit-tested in `lib/risk.test.ts` (16 tests).
 
 ### UI
-Title bar + LIVE/STALE/DEMO badge; area search (towns local-first, then
-geocoder) + "use my location" (client-side point-in-polygon, coords never
-logged); district sheet with **Towns chips** → town panel showing point
-rain, **nearest river + nearest gauge with distances**, water trend +
-14-day sparkline, district risk, FRIMS ribbon, district helplines;
-Affected-districts list; 72 h rain slider; Emergency panel; drag sheets
-with snap points; map style switcher (Map / Satellite / Terrain), 2D/3D
-tilt, **Flood view** (modelled water tint + Three.js rain that appears
-ONLY when live `currentMm > 0`); optional satellite flood-extent toggle
-(hidden until `SATELLITE_FLOOD_TILES` is set in FloodMap.tsx).
+Title bar + tiny LIVE/STALE/DEMO pill (tap for detail) + **EN/অ language
+toggle**; area search (towns local-first, then geocoder) + "use my
+location" (client-side point-in-polygon, coords never logged); district
+sheet with **Towns chips** → town panel showing point rain, **nearest
+river + nearest gauge with distances**, water trend + 14-day sparkline,
+district risk, FRIMS ribbon, district helplines, **WhatsApp/Share + "get
+alerts for this area"**; Affected-districts list; 72 h rain slider;
+Emergency panel; drag sheets with peek/half/full snap points; **single
+bottom bar of 4 icon tabs** (Districts / Rain / Flood / Emergency), one
+sheet open at a time; **ⓘ Map-key sheet** (replaces the always-on
+legends); **Layers popover** for style (Map / Satellite / Terrain) + 2D/3D
+tilt + optional flood-extent; **Flood view** (modelled water tint +
+Three.js rain that lazy-loads and appears ONLY when live `currentMm > 0`);
+first-run **coach mark** (once per device).
+
+### i18n (PART E)
+`lib/i18n.ts` — one flat, typed `STRINGS` dictionary (every key present in
+both `en` + `as`, so a missing translation is a compile error).
+`LanguageProvider` in the layout, `useT()/useLang()` in components; choice
+persisted to `localStorage` (`afw.lang`) and mirrored on `<html lang>`.
+Deep panels keep their inline bilingual (EN · অ) copy; the shell + new
+components switch fully via the toggle.
+
+### Alerts / push (PART D)
+`lib/push.ts` (server) + `lib/pushClient.ts` (browser) + `public/sw.js`.
+VAPID keys come from env — generate with `node scripts/gen-vapid.mjs`, set
+`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` + `CRON_SECRET`.
+Subscriptions persist to **Upstash Redis** when `UPSTASH_REDIS_REST_URL` +
+`UPSTASH_REDIS_REST_TOKEN` are set (use this on Vercel/serverless), else to
+a local JSON file (`PUSH_STORE_PATH`, default `.data/…`) for `npm run dev`.
+The cron reads bundled geometry over HTTP (`/data/*`), not the filesystem,
+so it works in a serverless function. Notifications are modelled heads-ups,
+always labelled "not an official warning". The feature self-hides when
+VAPID isn't configured. `web-push` is an external server package (see
+`next.config.mjs`).
+
+### Perf (PART F)
+`compress`/`poweredByHeader:false` in next.config; preconnect/dns-prefetch
+to tile + Open-Meteo hosts in the layout `<head>`; system-font stack (no
+web-font download — best for slow 4G, and local Noto renders Assamese);
+Three.js rain dynamically imported, off by default.
 
 ### Honesty invariants (do not regress)
 - Flood water tint = **modelled estimate**, badged as such; never claimed
@@ -75,3 +114,5 @@ ONLY when live `currentMm > 0`); optional satellite flood-extent toggle
   purpose — add only verified numbers; 1077/1079/NDRF always shown.
 - Gauge danger/HFL levels and discharge baselines are approximate and
   commented as needing verification/calibration.
+- Push alerts + the OG share card are **modelled**, never official: the
+  alert body always says so, and the OG card carries NO live/dated numbers.

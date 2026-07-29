@@ -1,6 +1,17 @@
 /** Shared types for the Assam flood dashboard. */
 
-export type ApiStatus = "live" | "stale" | "demo";
+/**
+ * Data freshness shown in the header badge.
+ *   connecting — first fetch still in flight (bundled demo data is on screen,
+ *                but we must NOT claim it's demo yet)
+ *   live       — fresh from Open-Meteo
+ *   stale      — a later fetch failed; last good data retained
+ *   demo       — the first fetch failed; bundled fallback only
+ */
+export type ApiStatus = "connecting" | "live" | "stale" | "demo";
+
+/** Statuses a server route can return (never "connecting"). */
+export type ServerStatus = Exclude<ApiStatus, "connecting">;
 
 export interface District {
   id: string;
@@ -17,7 +28,13 @@ export interface RainfallData {
   past48hMm: number;
   /** Forecast rainfall, next 72 hours (mm). */
   next72hMm: number;
-  /** Daily precipitation sums, past 2 days then next 5 days (mm). */
+  /**
+   * Observed rainfall over the last 7 days (mm) — "ground saturation memory".
+   * Assam floods when rivers are already full, so moderate rain on saturated
+   * ground matters far more than the same rain on dry ground.
+   */
+  past7dMm: number;
+  /** Daily precipitation sums, past 7 days then today + next 4 (mm). */
   dailyMm: number[];
   /** Precipitation right now (mm/h) — drives the rain animation. */
   currentMm?: number;
@@ -34,6 +51,8 @@ export interface DistrictRisk {
   components: {
     past48hMm: number;
     next72hMm: number;
+    /** Observed rain over the last 7 days (mm) — ground saturation. */
+    past7dMm: number;
     floodProneness: number;
     /** Nearest-gauge discharge anomaly, 0–1 (fraction of high baseline). */
     dischargeAnomaly: number;
@@ -147,6 +166,8 @@ export interface GeocodeResponse {
 export interface PointRain {
   past48hMm: number;
   next72hMm: number;
+  /** Observed rain over the last 7 days (mm) — ground saturation. */
+  past7dMm: number;
   dailyMm: number[];
   currentMm?: number;
   forecastHourlyMm?: number[];

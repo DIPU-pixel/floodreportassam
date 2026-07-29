@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DragSheet from "@/components/DragSheet";
+import AlertsButton from "@/components/AlertsButton";
 import Sparkline from "@/components/Sparkline";
 import { RISK_COLORS } from "@/lib/risk";
 import { GAUGE_COLORS, GAUGE_STATUS_LABEL, gaugeStatus } from "@/lib/gauges";
@@ -114,7 +115,7 @@ export default function MyAreaPanel({
   const specificHelpline = districtHelpline(place.districtId);
 
   return (
-    <DragSheet onClose={onClose} snap initial="half" ariaLabel={`My area — ${place.name}`}>
+    <DragSheet onClose={onClose} snap initial="peek" ariaLabel={`My area — ${place.name}`}>
       {/* Header */}
       <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-800 bg-slate-900/97 p-3">
           <div className="min-w-0">
@@ -285,6 +286,10 @@ export default function MyAreaPanel({
               </a>
             </div>
           </div>
+
+          {place.districtId && (
+            <AlertsButton districtId={place.districtId} districtName={place.districtName} />
+          )}
 
           <p className="mt-3 text-[10px] leading-snug text-slate-500">
             Privacy: your location is used in your browser and sent only to the weather service for this

@@ -29,6 +29,33 @@ npm test            # unit tests for risk + water trend
 npm run build
 ```
 
+## Deploying to Vercel (free / Hobby tier)
+
+The whole app runs on Vercel's free tier. Push it, then set env vars in
+**Project → Settings → Environment Variables**:
+
+| Variable | Needed for | Notes |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | OG images, alert cron | your production URL, e.g. `https://your-app.vercel.app` |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | push alerts | generate with `node scripts/gen-vapid.mjs` |
+| `CRON_SECRET` | alert cron auth | any long random string |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | push alerts | free Upstash Redis DB — **required for alerts on Vercel** |
+
+Everything except push alerts works with no env vars at all. Alerts need
+the VAPID keys **and** an Upstash Redis (Vercel's filesystem is read-only,
+so the local file store can't persist subscriptions there).
+
+**Firing alerts on a schedule.** Hobby cron jobs only run ~once a day, so
+trigger the check from a free external scheduler (cron-job.org, GitHub
+Actions) every 30–60 min during flood season:
+
+```bash
+curl "https://your-app.vercel.app/api/cron/check?secret=$CRON_SECRET"
+```
+
+It rescores every district and pushes only the subscribers whose district
+is high/severe. `.env.local` stays on your machine — never commit it.
+
 ## Rebuilding the bundled data
 
 Both scripts write into `public/data/` and only need running when you want
@@ -50,6 +77,39 @@ untouched.
 `build-towns.mjs` assigns every town's district by **point-in-polygon** and
 prints a warning for any town whose coordinates fall outside all polygons —
 fix those coordinates rather than ignoring the warning.
+
+## Calibrating the risk model against reality
+
+The risk score is a **modelled estimate**. The only way to know it means
+anything is to check it against what ASDMA actually reported:
+
+```bash
+node scripts/calibrate.mjs
+```
+
+It reads `public/data/frims-latest.json` (the official list of flood-affected
+districts), fetches today's live rain, scores every district with the same
+maths the app uses, and prints a table plus a **hit rate** — the share of
+FRIMS-affected districts our model put at `high` or `severe`.
+
+**Run this during flood season and nudge the weights until FRIMS-affected
+districts show high/severe.** The knobs live in `RISK_WEIGHTS` in
+[`lib/risk.ts`](lib/risk.ts):
+
+| Symptom | Fix |
+| --- | --- |
+| Low hit rate (real floods scoring `moderate`) | raise `saturation` / `proneness`, or lower `observedRainCapMm` / `forecastRainCapMm` |
+| Many false positives (quiet districts scoring `high`) | do the opposite |
+
+Current weights sum to 1: observed rain `0.25`, forecast rain `0.20`,
+discharge anomaly `0.20`, **saturation `0.15`**, proneness `0.20`. Caps were
+lowered from 150/200 mm to **90/120 mm** because Assam's valley districts flood
+on moderate rain once the ground is saturated and the Brahmaputra is already
+high — the old caps under-reported real events.
+
+> The script omits the discharge term (it needs per-gauge baselines), so its
+> scores read lower than the app's. Use it to compare districts **against each
+> other**, not as an absolute number.
 
 ## Features
 

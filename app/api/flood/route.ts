@@ -10,6 +10,9 @@ import type {
 } from "@/lib/types";
 import { baselineFor, demoDischarge, dischargeStatus, waterTrend } from "@/lib/discharge";
 
+// Per-request route (see /api/rain) — prevents build-time prerendering that
+// would freeze production on DEMO data. Upstream calls stay cached 15 min.
+export const dynamic = "force-dynamic";
 export const revalidate = 900; // 15 minutes
 
 // 7 observed days + 7 forecast → "today" sits at index 7.

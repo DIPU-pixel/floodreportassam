@@ -6,17 +6,26 @@ import type { DistrictRisk, RainfallData } from "./types";
  */
 export const RISK_WEIGHTS = {
   /** Weight of observed rain in the last 48h. */
-  observedRain: 0.3,
+  observedRain: 0.25,
   /** Weight of forecast rain in the next 72h. */
-  forecastRain: 0.25,
+  forecastRain: 0.2,
   /** Weight of the nearest gauge's river-discharge anomaly. */
   dischargeAnomaly: 0.2,
+  /** Weight of 7-day ground saturation (rivers already full). */
+  saturation: 0.15,
   /** Weight of the district's static flood-proneness. */
-  proneness: 0.25,
+  proneness: 0.2,
+
+  // ── Caps: how much rain counts as "everything this component can say".
+  // Tuned DOWN from 150/200: Assam's valley districts flood on moderate rain
+  // once the ground is saturated and the Brahmaputra is high, so the old caps
+  // under-reported real flood situations.
   /** mm of 48h rain considered "extreme" (caps the observed component). */
-  observedRainCapMm: 150,
+  observedRainCapMm: 90,
   /** mm of 72h forecast rain considered "extreme". */
-  forecastRainCapMm: 200,
+  forecastRainCapMm: 120,
+  /** mm of 7-day rain at which the ground counts as fully saturated. */
+  saturationCapMm: 250,
 } as const;
 
 /**
@@ -77,10 +86,13 @@ export function riskLevel(score: number): DistrictRisk["level"] {
 }
 
 /**
- * Pure, unit-testable district risk. Weighted blend of observed 48h rain,
- * forecast 72h rain, the nearest gauge's river-discharge anomaly (0–1), and
- * the district's static flood-proneness. All inputs normalise to 0–1 before
- * weighting; the result is a 0–100 modelled estimate.
+ * Pure, unit-testable district risk. Weighted blend of five components:
+ * observed 48h rain, forecast 72h rain, the nearest gauge's river-discharge
+ * anomaly, 7-day ground saturation, and the district's static flood-proneness.
+ * All inputs normalise to 0–1 before weighting; the result is a 0–100 MODELLED
+ * ESTIMATE — never an official warning.
+ *
+ * Calibrate with `node scripts/calibrate.mjs` during flood season.
  */
 export function computeDistrictRisk(
   districtId: string,
@@ -89,11 +101,15 @@ export function computeDistrictRisk(
   rain: RainfallData | undefined,
   dischargeAnomaly = 0
 ): DistrictRisk {
-  const past48hMm = rain?.past48hMm ?? 0;
-  const next72hMm = rain?.next72hMm ?? 0;
+  const past48hMm = Math.max(rain?.past48hMm ?? 0, 0);
+  const next72hMm = Math.max(rain?.next72hMm ?? 0, 0);
+  // Fall back to the 48h figure when no 7-day history is available, so the
+  // saturation term degrades gracefully rather than reading as "bone dry".
+  const past7dMm = Math.max(rain?.past7dMm ?? past48hMm, 0);
 
   const observed = Math.min(past48hMm / RISK_WEIGHTS.observedRainCapMm, 1);
   const forecast = Math.min(next72hMm / RISK_WEIGHTS.forecastRainCapMm, 1);
+  const saturation = Math.min(past7dMm / RISK_WEIGHTS.saturationCapMm, 1);
   const discharge = Math.min(Math.max(dischargeAnomaly, 0), 1);
   const proneness = Math.min(Math.max(floodProneness, 0), 1);
 
@@ -101,6 +117,7 @@ export function computeDistrictRisk(
     observed * RISK_WEIGHTS.observedRain +
     forecast * RISK_WEIGHTS.forecastRain +
     discharge * RISK_WEIGHTS.dischargeAnomaly +
+    saturation * RISK_WEIGHTS.saturation +
     proneness * RISK_WEIGHTS.proneness;
 
   const score = Math.round(Math.min(Math.max(raw, 0), 1) * 100);
@@ -110,7 +127,13 @@ export function computeDistrictRisk(
     name,
     score,
     level: riskLevel(score),
-    components: { past48hMm, next72hMm, floodProneness: proneness, dischargeAnomaly: discharge },
+    components: {
+      past48hMm,
+      next72hMm,
+      past7dMm,
+      floodProneness: proneness,
+      dischargeAnomaly: discharge,
+    },
   };
 }
 

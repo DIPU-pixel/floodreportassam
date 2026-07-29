@@ -29,9 +29,11 @@ export function usePolling<T extends Envelope>(
   url: string,
   intervalMs = REFRESH_MS
 ): PollState<T> {
+  // Starts as "connecting" — bundled demo data may already be on screen, but we
+  // only call it DEMO once a fetch has actually failed.
   const [state, setState] = useState<PollState<T>>({
     data: null,
-    status: "demo",
+    status: "connecting",
     fetchedAt: null,
   });
   const hadLive = useRef(false);
@@ -45,7 +47,8 @@ export function usePolling<T extends Envelope>(
       setState({ data, status: data.status, fetchedAt: data.fetchedAt });
     } catch (e) {
       console.error(`poll ${url} failed`, e);
-      setState((prev) => (hadLive.current ? { ...prev, status: "stale" } : prev));
+      // Ever been live → stale (keep last good data). Never been live → demo.
+      setState((prev) => ({ ...prev, status: hadLive.current ? "stale" : "demo" }));
     }
   }, [url]);
 
@@ -60,13 +63,14 @@ export function usePolling<T extends Envelope>(
 
 /**
  * Combine per-feed statuses for the header badge without ever understating
- * available data: all live → live; any stale → stale; any live (mixed with
- * demo) → live; otherwise demo.
+ * available data, and without claiming DEMO while a first fetch is pending.
  */
 export function combineStatus(...statuses: ApiStatus[]): ApiStatus {
-  if (statuses.length === 0) return "demo";
+  if (statuses.length === 0) return "connecting";
   if (statuses.every((s) => s === "live")) return "live";
   if (statuses.some((s) => s === "stale")) return "stale";
   if (statuses.some((s) => s === "live")) return "live";
+  // Nothing live yet: still waiting beats claiming demo.
+  if (statuses.some((s) => s === "connecting")) return "connecting";
   return "demo";
 }

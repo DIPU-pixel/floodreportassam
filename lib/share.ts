@@ -42,6 +42,21 @@ export function districtSummaryText(
 }
 
 /**
+ * Open WhatsApp with the summary pre-filled. Works on phone (app) and desktop
+ * (web) via wa.me. Kept separate from the generic share so people can send a
+ * flood update straight to a family/village group in one tap.
+ */
+export function whatsappShareUrl(text: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
+export function openWhatsApp(text: string): void {
+  if (typeof window !== "undefined") {
+    window.open(whatsappShareUrl(text), "_blank", "noopener,noreferrer");
+  }
+}
+
+/**
  * Share via the Web Share API when available (mobile), otherwise copy to the
  * clipboard. Resolves to how it was delivered so the UI can give feedback.
  */

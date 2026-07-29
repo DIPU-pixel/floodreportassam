@@ -5,6 +5,9 @@ build
 .env*.local
 .env
 
+# local push-subscription store (see lib/push.ts) — never commit device data
+.data
+
 # build artefacts / caches — must not be committed
 *.tsbuildinfo
 .vercel

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import DragSheet from "@/components/DragSheet";
+import AlertsButton from "@/components/AlertsButton";
 import { RISK_COLORS } from "@/lib/risk";
-import { districtSummaryText, shareOrCopy } from "@/lib/share";
+import { districtSummaryText, openWhatsApp, shareOrCopy } from "@/lib/share";
 import type { DistrictRisk, FrimsEntry, Town } from "@/lib/types";
 
 const LEVEL_AS: Record<DistrictRisk["level"], string> = {
@@ -48,6 +49,14 @@ export default function BottomSheet({
           </div>
           <div className="flex items-center gap-1.5">
             <button
+              onClick={() => openWhatsApp(districtSummaryText(risk, frims))}
+              aria-label="Share on WhatsApp"
+              title="WhatsApp"
+              className="rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold text-white active:bg-emerald-800"
+            >
+              WhatsApp
+            </button>
+            <button
               onClick={onShare}
               aria-label="Share district summary"
               className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-200 active:bg-slate-700"
@@ -87,6 +96,14 @@ export default function BottomSheet({
             <p className="text-lg font-bold">{risk.components.next72hMm} mm</p>
             <p className="text-[10px] text-slate-400">Rain — next 72h (forecast)</p>
           </div>
+        </div>
+
+        {/* Ground saturation — why moderate rain can still mean flooding */}
+        <div className="mt-2 flex items-baseline justify-between rounded-xl bg-slate-800/60 px-2.5 py-1.5">
+          <span className="text-[11px] text-slate-400">
+            Rain last 7 days <span className="text-slate-500">· ground saturation</span>
+          </span>
+          <span className="text-sm font-bold text-slate-200">{risk.components.past7dMm} mm</span>
         </div>
 
         {/* Nearest-gauge river discharge contribution */}
@@ -142,6 +159,8 @@ export default function BottomSheet({
             </div>
           </div>
         )}
+
+        <AlertsButton districtId={risk.districtId} districtName={risk.name} />
 
         <p className="mt-3 text-[10px] leading-snug text-slate-500">
           Estimate from rainfall + flood history. Not an official warning — follow ASDMA / district

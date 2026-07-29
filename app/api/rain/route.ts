@@ -10,6 +10,11 @@ import type {
 } from "@/lib/types";
 import { DEMO_RAINFALL } from "@/lib/demoData";
 
+// The ROUTE must run per-request (otherwise Vercel prerenders it at build time
+// and production serves baked-in DEMO data forever). Freshness is still capped
+// by the per-fetch `next: { revalidate: 900 }` below, so Open-Meteo is called at
+// most once every 15 min regardless of traffic.
+export const dynamic = "force-dynamic";
 export const revalidate = 900; // 15 minutes
 
 interface OpenMeteoLoc {
@@ -41,9 +46,13 @@ async function loadDistricts(): Promise<District[]> {
 
 const sum = (a: number[]): number => a.reduce((t, v) => t + v, 0);
 
+// past_days=7 gives the saturation memory (rivers already full?) as well as the
+// 48h window. Daily indices: [0..6] = the 7 days before today, [7..11] = today
+// plus the next 4 forecast days.
 const OM_PARAMS =
   "&hourly=precipitation&daily=precipitation_sum&current=precipitation" +
-  "&past_days=2&forecast_days=5&timezone=Asia%2FKolkata";
+  "&past_days=7&forecast_days=5&timezone=Asia%2FKolkata";
+const PAST_DAYS = 7;
 
 /** Turn one Open-Meteo location object into our 48h/72h/hourly shape. */
 function parseLoc(loc: OpenMeteoLoc | undefined): PointRain {
@@ -63,16 +72,21 @@ function parseLoc(loc: OpenMeteoLoc | undefined): PointRain {
     return {
       past48hMm: Math.round(sum(precip.slice(Math.max(0, nowIdx - 48), nowIdx))),
       next72hMm: Math.round(sum(next72)),
+      // 168 h = 7 days of saturation memory.
+      past7dMm: Math.round(sum(precip.slice(Math.max(0, nowIdx - 168), nowIdx))),
       dailyMm,
       currentMm,
       // Per-hour forecast for the 72h time slider (rounded to 0.1 mm).
       forecastHourlyMm: next72.map((v) => Math.round(v * 10) / 10),
     };
   }
-  // Fallback: daily buckets — [0,1] past 2 days, [2..4] next 3 days.
+
+  // Fallback: daily buckets — [0..6] the past week, [7..] today onwards.
+  const past = dailyMm.slice(0, PAST_DAYS);
   return {
-    past48hMm: Math.round((dailyMm[0] ?? 0) + (dailyMm[1] ?? 0)),
-    next72hMm: Math.round((dailyMm[2] ?? 0) + (dailyMm[3] ?? 0) + (dailyMm[4] ?? 0)),
+    past48hMm: Math.round(sum(past.slice(-2))),
+    next72hMm: Math.round(sum(dailyMm.slice(PAST_DAYS, PAST_DAYS + 3))),
+    past7dMm: Math.round(sum(past)),
     dailyMm,
     currentMm,
   };
@@ -126,7 +140,7 @@ export async function GET(
       return NextResponse.json({
         status: "demo",
         fetchedAt,
-        point: { past48hMm: 0, next72hMm: 0, dailyMm: [] },
+        point: { past48hMm: 0, next72hMm: 0, past7dMm: 0, dailyMm: [] },
       });
     }
   }

@@ -19,7 +19,13 @@
       "Bash(curl -s \"http://localhost:3111/api/rain?lat=26.92&lng=94.74\")",
       "Bash(node -e \"let s='';process.stdin.on\\('data',d=>s+=d\\).on\\('end',\\(\\)=>{const j=JSON.parse\\(s\\);console.log\\('status:',j.status,'| past48:',j.point.past48hMm,'mm | next72:',j.point.next72hMm,'mm | currentMm:',j.point.currentMm,'| hourly pts:',j.point.forecastHourlyMm?.length\\)}\\)\")",
       "Bash(curl -s \"http://localhost:3111/api/flood?lat=26.92&lng=94.74\")",
-      "Bash(node -e \"let s='';process.stdin.on\\('data',d=>s+=d\\).on\\('end',\\(\\)=>{const j=JSON.parse\\(s\\);console.log\\('status:',j.status,'| series14:',j.discharge.series14.length,'| todayIndex:',j.discharge.todayIndex,'| trend:',j.discharge.trend,'| peak:',j.discharge.peakDischarge,'m3/s'\\)}\\)\")"
+      "Bash(node -e \"let s='';process.stdin.on\\('data',d=>s+=d\\).on\\('end',\\(\\)=>{const j=JSON.parse\\(s\\);console.log\\('status:',j.status,'| series14:',j.discharge.series14.length,'| todayIndex:',j.discharge.todayIndex,'| trend:',j.discharge.trend,'| peak:',j.discharge.peakDischarge,'m3/s'\\)}\\)\")",
+      "Bash(rm -rf .next)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//tmp/**)",
+      "Bash(echo \"build exit=$?\")",
+      "Bash(cd \"c:\\\\Users\\\\ec0033au\\\\Downloads\\\\assam-flood-map\\\\assam-flood-map\" && grep -vE \"^\\\\s*\\(at |'C:|\\\\]|\\\\}|\\\\{\\)\" /tmp/bf.log | tail -12)",
+      "Bash(node scripts/gen-vapid.mjs)"
     ]
   }
 }

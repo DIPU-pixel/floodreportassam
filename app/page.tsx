@@ -4,8 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import FloodMap from "@/components/FloodMap";
 import BottomSheet from "@/components/BottomSheet";
 import GaugeSheet from "@/components/GaugeSheet";
-import Legend from "@/components/Legend";
+import LegendSheet from "@/components/LegendSheet";
 import StatusBadge from "@/components/StatusBadge";
+import LanguageToggle from "@/components/LanguageToggle";
+import BottomTabs, { type TabKey } from "@/components/BottomTabs";
+import CoachMark from "@/components/CoachMark";
 import TimeSlider from "@/components/TimeSlider";
 import AffectedPanel from "@/components/AffectedPanel";
 import EmergencyPanel from "@/components/EmergencyPanel";
@@ -13,6 +16,7 @@ import dynamic from "next/dynamic";
 import MyAreaSearch from "@/components/MyAreaSearch";
 import MyAreaPanel from "@/components/MyAreaPanel";
 import SituationBar from "@/components/SituationBar";
+import { useT } from "@/lib/i18n";
 
 // Three.js rain loads lazily — only when flood view is first opened, so the
 // base app stays light on cheap phones / slow 4G.
@@ -47,6 +51,7 @@ interface GeoJson {
 type SheetName = "districts" | "emergency" | null;
 
 export default function Home() {
+  const t = useT();
   const [geo, setGeo] = useState<GeoJson | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [gaugeStations, setGaugeStations] = useState<GaugeStation[]>([]);
@@ -62,7 +67,7 @@ export default function Home() {
   const [rainHour, setRainHour] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [floodView, setFloodView] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
   const [flyTo, setFlyTo] = useState<{ lng: number; lat: number; zoom?: number } | null>(null);
 
   // Load district boundaries once.
@@ -311,12 +316,14 @@ export default function Home() {
   );
 
   // --- Exclusive selection/panel handlers -------------------------------
+  // One sheet at a time: every opener clears the others (incl. the legend).
   const selectDistrict = useCallback((id: string | null) => {
     setSelectedId(id);
     setSelectedGaugeId(null);
     if (id) {
       setActiveSheet(null);
       setMyPlace(null);
+      setLegendOpen(false);
     }
   }, []);
 
@@ -325,6 +332,7 @@ export default function Home() {
     setSelectedId(null);
     setActiveSheet(null);
     setMyPlace(null);
+    setLegendOpen(false);
   }, []);
 
   const openSheet = useCallback((name: Exclude<SheetName, null>) => {
@@ -332,6 +340,20 @@ export default function Home() {
     setSelectedId(null);
     setSelectedGaugeId(null);
     setMyPlace(null);
+    setLegendOpen(false);
+  }, []);
+
+  const toggleLegend = useCallback(() => {
+    setLegendOpen((v) => {
+      const next = !v;
+      if (next) {
+        setActiveSheet(null);
+        setSelectedId(null);
+        setSelectedGaugeId(null);
+        setMyPlace(null);
+      }
+      return next;
+    });
   }, []);
 
   const toggleRain = useCallback(() => {
@@ -343,6 +365,7 @@ export default function Home() {
         setSelectedGaugeId(null);
         setMyPlace(null);
         setFloodView(false);
+        setLegendOpen(false);
       } else {
         setPlaying(false);
       }
@@ -353,10 +376,33 @@ export default function Home() {
   const toggleFlood = useCallback(() => {
     setFloodView((v) => {
       const next = !v;
-      if (next) setRainMode(false);
+      if (next) {
+        setRainMode(false);
+        setLegendOpen(false);
+      }
       return next;
     });
   }, []);
+
+  // Single bottom tab bar → the four primary actions.
+  const onTab = useCallback(
+    (key: TabKey) => {
+      if (key === "districts") openSheet("districts");
+      else if (key === "emergency") openSheet("emergency");
+      else if (key === "rain") toggleRain();
+      else if (key === "flood") toggleFlood();
+    },
+    [openSheet, toggleRain, toggleFlood]
+  );
+
+  const activeTabs = useMemo(() => {
+    const s = new Set<TabKey>();
+    if (activeSheet === "districts") s.add("districts");
+    if (activeSheet === "emergency") s.add("emergency");
+    if (rainMode) s.add("rain");
+    if (floodView) s.add("flood");
+    return s;
+  }, [activeSheet, rainMode, floodView]);
 
   const selectFromPanel = useCallback(
     (id: string) => {
@@ -397,6 +443,7 @@ export default function Home() {
       setActiveSheet(null);
       setRainMode(false);
       setPlaying(false);
+      setLegendOpen(false);
     },
     [geo, towns]
   );
@@ -408,7 +455,8 @@ export default function Home() {
 
   const closeMyArea = useCallback(() => setMyPlace(null), []);
 
-  const anySheetOpen = !!selectedId || !!selectedGauge || activeSheet !== null || !!myPlace;
+  const anySheetOpen =
+    !!selectedId || !!selectedGauge || activeSheet !== null || !!myPlace || legendOpen;
   const showSlider = rainMode && !anySheetOpen;
 
   return (
@@ -446,16 +494,22 @@ export default function Home() {
       <header className="pointer-events-none absolute left-0 top-0 z-10 flex max-w-[min(28rem,calc(100%-5rem))] flex-col gap-2 p-3">
         <div className="pointer-events-auto flex flex-wrap items-center gap-2">
           <div className="rounded-xl bg-slate-900/85 px-3 py-2 shadow-lg backdrop-blur">
-            <h1 className="text-sm font-bold leading-tight">
-              Assam Flood Watch <span className="font-normal text-slate-300">| অসম বান নিৰীক্ষণ</span>
-            </h1>
+            <h1 className="text-sm font-bold leading-tight">{t("app.title")}</h1>
             <p className="text-[11px] text-slate-400">
-              {rainMode
-                ? "Rain forecast view — modelled, not an official warning"
-                : "District flood risk — modelled estimate, not an official warning"}
+              {rainMode ? t("app.subtitle.rain") : t("app.subtitle.risk")}
             </p>
           </div>
           <StatusBadge status={status} updatedAt={updatedAt} />
+          <LanguageToggle />
+          <button
+            onClick={toggleLegend}
+            aria-pressed={legendOpen}
+            aria-label={t("legend.title")}
+            className="pointer-events-auto flex items-center gap-1 rounded-full bg-slate-900/90 px-2.5 py-1 text-[10px] font-semibold text-slate-200 shadow-lg backdrop-blur"
+          >
+            <span aria-hidden>ⓘ</span>
+            <span>{t("legend.open")}</span>
+          </button>
         </div>
         {/* Plain-language "what's happening" line — the first thing to read. */}
         <SituationBar
@@ -470,17 +524,11 @@ export default function Home() {
         />
 
         {/* Left-aligned, collapsed by default — expands only when tapped. */}
-        <MyAreaSearch
-          districts={districtList}
-          towns={towns}
-          onResolve={resolveAndPick}
-          onExpandedChange={setSearchOpen}
-        />
+        <MyAreaSearch districts={districtList} towns={towns} onResolve={resolveAndPick} />
       </header>
 
-      {/* Risk legend — hidden when a sheet, the search panel, or rain mode is up
-          (it used to sit underneath the search results). */}
-      {!anySheetOpen && !rainMode && !searchOpen && <Legend />}
+      {/* Map key — opened from the ⓘ button, one combined sheet. */}
+      {legendOpen && <LegendSheet onClose={() => setLegendOpen(false)} />}
 
       {/* Bottom cards (mutually exclusive) */}
       <BottomSheet
@@ -531,43 +579,11 @@ export default function Home() {
         />
       )}
 
-      {/* Action bar — Emergency always one tap away. */}
-      <nav className="pointer-events-none absolute inset-x-0 bottom-10 z-30 flex justify-center px-3">
-        <div className="pointer-events-auto flex flex-wrap justify-center gap-1.5 rounded-2xl bg-slate-900/90 p-1 shadow-lg backdrop-blur">
-          <button
-            onClick={() => openSheet("emergency")}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold ${
-              activeSheet === "emergency" ? "bg-red-600 text-white" : "bg-red-600/90 text-white"
-            }`}
-          >
-            ⚠ Emergency
-          </button>
-          <button
-            onClick={() => openSheet("districts")}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              activeSheet === "districts" ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-200"
-            }`}
-          >
-            ☰ Districts
-          </button>
-          <button
-            onClick={toggleRain}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              rainMode ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-200"
-            }`}
-          >
-            🌧 Rain 72h
-          </button>
-          <button
-            onClick={toggleFlood}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              floodView ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-200"
-            }`}
-          >
-            🌊 Flood view
-          </button>
-        </div>
-      </nav>
+      {/* Single icon tab bar — Emergency always one tap away. */}
+      <BottomTabs active={activeTabs} onSelect={onTab} />
+
+      {/* First-run coach mark (once per device). */}
+      <CoachMark />
 
       {/* Permanent disclaimer footer */}
       <footer className="absolute inset-x-0 bottom-0 z-10 bg-slate-950/90 px-3 py-1.5 text-center text-[10px] leading-snug text-slate-400">

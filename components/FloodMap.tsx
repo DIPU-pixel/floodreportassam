@@ -5,6 +5,7 @@ import maplibregl from "maplibre-gl";
 import { RISK_COLORS } from "@/lib/risk";
 import { GAUGE_COLORS } from "@/lib/gauges";
 import { prettyRiver } from "@/lib/geo";
+import { useT } from "@/lib/i18n";
 import type { DistrictRisk, GaugeMarkerData } from "@/lib/types";
 
 interface Props {
@@ -95,6 +96,8 @@ export default function FloodMap({
   const [pitched, setPitched] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [satFlood, setSatFlood] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const t = useT();
 
   const floodOn = !!floodByDistrict && Object.keys(floodByDistrict).length > 0;
   const wantPitch = pitched || floodOn;
@@ -677,47 +680,70 @@ export default function FloodMap({
     else map.once("load", apply);
   }, [pin]);
 
-  const STYLE_LABELS: Record<MapStyle, string> = { map: "Map", satellite: "Sat", terrain: "Terrain" };
+  const STYLE_KEYS = { map: "layers.map", satellite: "layers.satellite", terrain: "layers.terrain" } as const;
 
   return (
     <>
       <div ref={containerRef} className="absolute inset-0" />
 
-      {/* Style switcher + 2D/3D toggle (bottom-right) */}
+      {/* One "Layers" button → popover with base style, 3D tilt and (if set up)
+          the flood-extent overlay. Collapses what used to be a column of always-
+          visible buttons cluttering a phone screen. */}
       <div className="absolute bottom-24 right-3 z-20 flex flex-col items-end gap-2">
-        <div className="flex overflow-hidden rounded-lg text-[11px] font-semibold shadow-lg">
-          {(["map", "satellite", "terrain"] as const).map((s) => (
+        {layersOpen && (
+          <div className="w-40 rounded-xl border border-slate-700 bg-slate-900/95 p-2 shadow-2xl backdrop-blur">
+            <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+              {t("layers.title")}
+            </p>
+            <div className="flex flex-col gap-1">
+              {(["map", "satellite", "terrain"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setMapStyle(s)}
+                  aria-pressed={mapStyle === s}
+                  className={`rounded-lg px-2.5 py-1.5 text-left text-[12px] font-semibold ${
+                    mapStyle === s ? "bg-sky-600 text-white" : "bg-slate-800/80 text-slate-200"
+                  }`}
+                >
+                  {t(STYLE_KEYS[s])}
+                </button>
+              ))}
+            </div>
             <button
-              key={s}
-              onClick={() => setMapStyle(s)}
-              aria-pressed={mapStyle === s}
-              className={`px-2.5 py-1.5 backdrop-blur ${
-                mapStyle === s ? "bg-sky-600 text-white" : "bg-slate-900/90 text-slate-200"
+              onClick={() => setPitched((p) => !p)}
+              aria-pressed={pitched}
+              className={`mt-1.5 flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${
+                pitched ? "bg-sky-600 text-white" : "bg-slate-800/80 text-slate-200"
               }`}
             >
-              {STYLE_LABELS[s]}
+              <span>{t("layers.tilt")}</span>
+              <span className="text-[10px]">{pitched ? "3D" : "2D"}</span>
             </button>
-          ))}
-        </div>
-        <button
-          onClick={() => setPitched((p) => !p)}
-          aria-pressed={pitched}
-          className="rounded-lg bg-slate-900/90 px-3 py-1.5 text-[11px] font-semibold text-slate-200 shadow-lg backdrop-blur"
-        >
-          {pitched ? "2D" : "3D"}
-        </button>
-        {/* Only rendered when a real flood-extent tile source is configured. */}
-        {SATELLITE_FLOOD_TILES !== "" && (
-          <button
-            onClick={() => setSatFlood((v) => !v)}
-            aria-pressed={satFlood}
-            className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold shadow-lg backdrop-blur ${
-              satFlood ? "bg-blue-600 text-white" : "bg-slate-900/90 text-slate-200"
-            }`}
-          >
-            🛰 Flood extent
-          </button>
+            {/* Only when a real flood-extent tile source is configured. */}
+            {SATELLITE_FLOOD_TILES !== "" && (
+              <button
+                onClick={() => setSatFlood((v) => !v)}
+                aria-pressed={satFlood}
+                className={`mt-1.5 w-full rounded-lg px-2.5 py-1.5 text-left text-[12px] font-semibold ${
+                  satFlood ? "bg-blue-600 text-white" : "bg-slate-800/80 text-slate-200"
+                }`}
+              >
+                🛰 {t("layers.floodExtent")}
+              </button>
+            )}
+          </div>
         )}
+        <button
+          onClick={() => setLayersOpen((v) => !v)}
+          aria-expanded={layersOpen}
+          aria-label={t("layers.title")}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold shadow-lg backdrop-blur ${
+            layersOpen ? "bg-sky-600 text-white" : "bg-slate-900/90 text-slate-200"
+          }`}
+        >
+          <span aria-hidden>⧉</span>
+          <span>{t("layers.title")}</span>
+        </button>
       </div>
     </>
   );

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { GeocodeResponse, GeocodeResult } from "@/lib/types";
 
+// Per-request route (query-dependent); upstream results cached a day.
+export const dynamic = "force-dynamic";
 export const revalidate = 86400; // place coordinates are stable — cache a day
 
 interface OMGeoResult {

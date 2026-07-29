@@ -5,8 +5,14 @@
 @import "maplibre-gl/dist/maplibre-gl.css";
 
 html, body { height: 100%; margin: 0; }
+/* System font stack first — NO web-font download. On cheap Android over slow
+ * 4G a blocking font is a real cost, and the local Noto/Roboto fonts already
+ * render Assamese (Bengali script) correctly. If "Inter" happens to be
+ * installed it's used; otherwise we fall straight through with no request and
+ * no swap flash. */
 body {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+    "Noto Sans Bengali", Inter, ui-sans-serif, sans-serif;
 }
 
 .maplibregl-ctrl-attrib { font-size: 10px; }

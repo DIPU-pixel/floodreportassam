@@ -4,12 +4,15 @@ import { waterTrend } from "./discharge";
 import { districtSlug } from "./myArea";
 import type { RainfallData } from "./types";
 
-const rain = (past: number, next: number): RainfallData => ({
-  districtId: "x",
-  past48hMm: past,
-  next72hMm: next,
-  dailyMm: [],
-});
+/** Omitting past7d leaves the field absent, as older cached payloads would. */
+const rain = (past: number, next: number, past7d?: number): RainfallData =>
+  ({
+    districtId: "x",
+    past48hMm: past,
+    next72hMm: next,
+    ...(past7d === undefined ? {} : { past7dMm: past7d }),
+    dailyMm: [],
+  }) as RainfallData;
 
 describe("riskLevel", () => {
   it("buckets scores into bands", () => {
@@ -25,9 +28,17 @@ describe("riskLevel", () => {
 });
 
 describe("RISK_WEIGHTS", () => {
-  it("component weights sum to 1", () => {
-    const { observedRain, forecastRain, dischargeAnomaly, proneness } = RISK_WEIGHTS;
-    expect(observedRain + forecastRain + dischargeAnomaly + proneness).toBeCloseTo(1, 6);
+  it("all five component weights sum to 1", () => {
+    const { observedRain, forecastRain, dischargeAnomaly, saturation, proneness } = RISK_WEIGHTS;
+    expect(observedRain + forecastRain + dischargeAnomaly + saturation + proneness).toBeCloseTo(1, 6);
+  });
+
+  it("uses the calibrated (lowered) rain caps", () => {
+    // Assam floods on moderate rain over saturated ground — high caps
+    // under-reported real events, so these must stay low.
+    expect(RISK_WEIGHTS.observedRainCapMm).toBe(90);
+    expect(RISK_WEIGHTS.forecastRainCapMm).toBe(120);
+    expect(RISK_WEIGHTS.saturationCapMm).toBe(250);
   });
 });
 
@@ -39,14 +50,15 @@ describe("computeDistrictRisk", () => {
   });
 
   it("reaches 100 when every component maxes out", () => {
-    const r = computeDistrictRisk("x", "X", 1, rain(9999, 9999), 1);
+    const r = computeDistrictRisk("x", "X", 1, rain(9999, 9999, 9999), 1);
     expect(r.score).toBe(100);
     expect(r.level).toBe("severe");
   });
 
   it("caps rain contributions at the configured mm caps", () => {
-    const atCap = computeDistrictRisk("x", "X", 0, rain(RISK_WEIGHTS.observedRainCapMm, 0), 0);
-    const overCap = computeDistrictRisk("x", "X", 0, rain(RISK_WEIGHTS.observedRainCapMm * 10, 0), 0);
+    // past7d pinned to 0 so only the observed-rain component varies.
+    const atCap = computeDistrictRisk("x", "X", 0, rain(RISK_WEIGHTS.observedRainCapMm, 0, 0), 0);
+    const overCap = computeDistrictRisk("x", "X", 0, rain(RISK_WEIGHTS.observedRainCapMm * 10, 0, 0), 0);
     expect(atCap.score).toBe(overCap.score);
     expect(atCap.score).toBe(Math.round(RISK_WEIGHTS.observedRain * 100));
   });
@@ -58,6 +70,10 @@ describe("computeDistrictRisk", () => {
     expect(computeDistrictRisk("x", "X", 0, undefined, 1).score).toBe(
       Math.round(RISK_WEIGHTS.dischargeAnomaly * 100)
     );
+    // Saturation alone, with no 48h/72h rain.
+    expect(
+      computeDistrictRisk("x", "X", 0, rain(0, 0, RISK_WEIGHTS.saturationCapMm), 0).score
+    ).toBe(Math.round(RISK_WEIGHTS.saturation * 100));
   });
 
   it("raises the score as the discharge anomaly grows", () => {
@@ -66,10 +82,30 @@ describe("computeDistrictRisk", () => {
     expect(hi.score).toBeGreaterThan(lo.score);
   });
 
+  it("scores wet ground higher than dry ground for the same rain", () => {
+    const dry = computeDistrictRisk("x", "X", 0.5, rain(40, 40, 20), 0.3);
+    const soaked = computeDistrictRisk("x", "X", 0.5, rain(40, 40, 300), 0.3);
+    expect(soaked.score).toBeGreaterThan(dry.score);
+  });
+
+  it("falls back to the 48h figure when no 7-day history exists", () => {
+    // past7dMm omitted → must not read as bone dry.
+    const r = computeDistrictRisk("x", "X", 0, rain(60, 0), 0);
+    expect(r.components.past7dMm).toBe(60);
+  });
+
+  it("lowered caps make a real monsoon day score higher than before", () => {
+    // 80mm/48h + 100mm/72h on a prone, saturated district must reach high/severe.
+    const r = computeDistrictRisk("barpeta", "Barpeta", 0.9, rain(80, 100, 260), 0.8);
+    expect(r.score).toBeGreaterThanOrEqual(75);
+    expect(r.level).toBe("severe");
+  });
+
   it("clamps out-of-range inputs", () => {
-    const r = computeDistrictRisk("x", "X", 5, rain(-10, -10), 5);
+    const r = computeDistrictRisk("x", "X", 5, rain(-10, -10, -10), 5);
     expect(r.components.floodProneness).toBe(1);
     expect(r.components.dischargeAnomaly).toBe(1);
+    expect(r.components.past7dMm).toBeGreaterThanOrEqual(0);
     expect(r.score).toBeGreaterThanOrEqual(0);
     expect(r.score).toBeLessThanOrEqual(100);
   });

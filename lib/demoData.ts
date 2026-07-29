@@ -16,13 +16,16 @@ function hash(id: string): number {
 
 function demoFor(id: string, prone: number): RainfallData {
   const jitter = hash(id); // stable pseudo-variation
-  const past48hMm = Math.round(prone * 120 + jitter * 30);
-  const next72hMm = Math.round(prone * 150 + jitter * 40);
-  // Spread across 7 days: 2 past + 5 forecast, front-loaded.
-  const daily = [0.55, 0.5, 0.48, 0.42, 0.34, 0.22, 0.16].map((k) =>
-    Math.round((past48hMm + next72hMm) * 0.14 * k * (0.85 + jitter * 0.4))
+  const past48hMm = Math.round(prone * 90 + jitter * 25);
+  const next72hMm = Math.round(prone * 110 + jitter * 30);
+  // 7-day saturation: roughly 2.4× the 48h figure for a wet monsoon week.
+  const past7dMm = Math.round(past48hMm * (2.1 + jitter * 0.7));
+  // 12 daily buckets: 7 past days + today + 4 forecast days.
+  const shape = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.0, 0.9, 0.8, 0.6, 0.45, 0.3];
+  const dailyMm = shape.map((k) =>
+    Math.round((past7dMm / 7) * k * (0.85 + jitter * 0.4))
   );
-  return { districtId: id, past48hMm, next72hMm, dailyMm: daily };
+  return { districtId: id, past48hMm, next72hMm, past7dMm, dailyMm };
 }
 
 export const DEMO_RAINFALL: RainfallData[] = Object.entries(FLOOD_PRONENESS)

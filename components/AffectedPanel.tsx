@@ -24,7 +24,7 @@ export default function AffectedPanel({
 }) {
 
   return (
-    <DragSheet onClose={onClose} snap initial="half" ariaLabel="Affected districts">
+    <DragSheet onClose={onClose} snap initial="peek" ariaLabel="Affected districts">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/97 px-3 py-2">
         <div>
           <h2 className="text-base font-bold leading-tight">

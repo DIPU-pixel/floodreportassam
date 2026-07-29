@@ -1,10 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/i18n";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const DESCRIPTION =
+  "Real-time flood risk map for all districts of Assam — rainfall-driven modelled estimates. Informational only; follow ASDMA / CWC for official warnings.";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Assam Flood Watch | অসম বান নিৰীক্ষণ",
-  description:
-    "Real-time flood risk map for all districts of Assam — rainfall-driven modelled estimates. Informational only; follow ASDMA / CWC for official warnings.",
+  description: DESCRIPTION,
   manifest: "/manifest.webmanifest",
   applicationName: "Assam Flood Watch",
   icons: {
@@ -15,6 +20,20 @@ export const metadata: Metadata = {
     capable: true,
     title: "Flood Watch",
     statusBarStyle: "black-translucent",
+  },
+  openGraph: {
+    type: "website",
+    title: "Assam Flood Watch | অসম বান নিৰীক্ষণ",
+    description: DESCRIPTION,
+    siteName: "Assam Flood Watch",
+    url: "/",
+    images: [{ url: "/api/og", width: 1200, height: 630, alt: "Assam Flood Watch" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Assam Flood Watch | অসম বান নিৰীক্ষণ",
+    description: DESCRIPTION,
+    images: ["/api/og"],
   },
 };
 
@@ -28,8 +47,17 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* Warm up the connections the map + data feeds will need, so the first
+            tile/fetch doesn't also pay DNS + TLS on slow 4G. */}
+        <link rel="preconnect" href="https://tile.openstreetmap.org" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://server.arcgisonline.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://api.open-meteo.com" />
+        <link rel="dns-prefetch" href="https://flood-api.open-meteo.com" />
+        <link rel="dns-prefetch" href="https://geocoding-api.open-meteo.com" />
+      </head>
       <body className="h-dvh w-full overflow-hidden overscroll-none bg-slate-950 text-slate-100 antialiased">
-        {children}
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );
