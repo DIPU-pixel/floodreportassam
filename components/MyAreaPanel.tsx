@@ -32,6 +32,7 @@ export default function MyAreaPanel({
   stations,
   readings,
   rivers,
+  gaugeMeta,
   onClose,
 }: {
   place: MyPlace;
@@ -40,6 +41,7 @@ export default function MyAreaPanel({
   stations: GaugeStation[];
   readings: Map<string, GaugeReading>;
   rivers: GeoJSON.FeatureCollection | null;
+  gaugeMeta?: { source: string; fetchedAt: string; reachable: boolean } | null;
   onClose: () => void;
 }) {
   const [rain, setRain] = useState<PointRain | null>(null);
@@ -250,6 +252,11 @@ export default function MyAreaPanel({
           {/* Stage 2: ranked nearby rivers, each with its OWN same-river gauge. */}
           <NearbyRivers
             rows={riverRows}
+            sourceLabel={
+              gaugeMeta?.reachable
+                ? "Source: CWC Flood Forecasting · live."
+                : "Gauge levels: demo (CWC live source unreachable)."
+            }
             crossRiverNote={
               nearest
                 ? `No gauge on any river near you. Nearest gauge: ${nearest.station.name} on ${nearest.station.river}, ~${nearest.km.toFixed(

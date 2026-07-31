@@ -53,6 +53,8 @@ export interface RiverRow {
     dangerLevelM: number;
     status: GaugeStatus;
     trend: WaterTrend;
+    /** ISO time of a live reading (absent for demo levels). */
+    timestamp?: string;
   } | null;
 }
 
@@ -88,6 +90,7 @@ export function buildRiverRows(
         dangerLevelM: g.station.dangerLevelM,
         status: gaugeStatus(g.station, levelM),
         trend: rd?.trend ?? "steady",
+        timestamp: rd?.timestamp,
       },
     };
   });

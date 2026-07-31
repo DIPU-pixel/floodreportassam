@@ -86,6 +86,21 @@ export default function GaugeSheet({
                   ? `${toDanger.toFixed(2)} m above danger`
                   : `${Math.abs(toDanger).toFixed(2)} m below danger`}
               </p>
+              <p className="mt-0.5 text-[10px] text-slate-500">
+                {reading.observed
+                  ? `Source: CWC Flood Forecasting${
+                      reading.timestamp
+                        ? " · as of " +
+                          new Date(reading.timestamp).toLocaleString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })
+                        : ""
+                    }`
+                  : "Demo level — live CWC data when reachable"}
+              </p>
             </div>
             <dl className="space-y-1 text-[11px]">
               <Row k="Danger level" v={`${station.dangerLevelM.toFixed(2)} m`} dot="#fb923c" />

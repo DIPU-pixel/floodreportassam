@@ -16,14 +16,25 @@ const TIER_CHIP: Record<RiverRow["tier"], { en: string; as: string; cls: string 
  * (or an honest "no gauge" tier). Compact on mobile: first 3 rows, the rest
  * behind "show more". A status is shown only for a river's own gauge.
  */
+/** Compact "24 Jul, 4:00 PM" from an ISO string. */
+function fmtTime(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
 export default function NearbyRivers({
   rows,
   crossRiverNote,
+  sourceLabel,
   initial = 3,
 }: {
   rows: RiverRow[];
   /** Shown only when NONE of the nearby rivers has a gauge. */
   crossRiverNote?: string;
+  /** e.g. "Source: CWC · live" or the demo note. */
+  sourceLabel?: string;
   initial?: number;
 }) {
   const [showAll, setShowAll] = useState(false);
@@ -66,6 +77,9 @@ export default function NearbyRivers({
                     <span className="text-[10px] text-slate-400">
                       {r.gauge.name} · {r.gauge.levelM.toFixed(2)}/{r.gauge.dangerLevelM.toFixed(2)} m ·{" "}
                       {TREND_LABEL[r.gauge.trend].arrow} {TREND_LABEL[r.gauge.trend].en}
+                      {fmtTime(r.gauge.timestamp) && (
+                        <span className="text-slate-500"> · as of {fmtTime(r.gauge.timestamp)}</span>
+                      )}
                     </span>
                   </>
                 ) : (
@@ -95,7 +109,7 @@ export default function NearbyRivers({
       )}
 
       <p className="mt-1.5 text-[9px] leading-snug text-slate-600">
-        Gauge levels: CWC (demo — live in Stage 3). A river’s status is never borrowed from another river.
+        {sourceLabel ?? "Gauge levels: CWC (demo)."} A river’s status is never borrowed from another river.
       </p>
     </div>
   );

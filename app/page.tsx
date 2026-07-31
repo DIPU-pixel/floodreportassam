@@ -26,7 +26,7 @@ import { DEMO_GAUGE_READINGS, gaugeStatus } from "@/lib/gauges";
 import { DEMO_RAINFALL } from "@/lib/demoData";
 import { forecastHourly, rainColor } from "@/lib/rainForecast";
 import { usePolling, combineStatus } from "@/lib/useLiveData";
-import { findDistrict, nearestTown } from "@/lib/geo";
+import { findDistrict, nearestTown, nearestRiver } from "@/lib/geo";
 import { districtSlug, saveMyPlace, type MyPlace } from "@/lib/myArea";
 import type {
   District,
@@ -38,6 +38,8 @@ import type {
   GaugeMarkerData,
   GaugeReading,
   GaugeStation,
+  LiveGauge,
+  LiveGaugeResponse,
   RainApiResponse,
   RainfallData,
   Town,
@@ -54,7 +56,9 @@ export default function Home() {
   const t = useT();
   const [geo, setGeo] = useState<GeoJson | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [gaugeStations, setGaugeStations] = useState<GaugeStation[]>([]);
+  const [bundledGauges, setBundledGauges] = useState<GaugeStation[]>([]);
+  const [liveGauges, setLiveGauges] = useState<LiveGauge[]>([]);
+  const [gaugeMeta, setGaugeMeta] = useState<{ source: string; fetchedAt: string; reachable: boolean } | null>(null);
   const [selectedGaugeId, setSelectedGaugeId] = useState<string | null>(null);
   const [frims, setFrims] = useState<FrimsReport | null>(null);
   const [towns, setTowns] = useState<Town[]>([]);
@@ -86,13 +90,42 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // Load gauge stations once.
+  // Bundled gauge stations — the fallback when live CWC data is unavailable.
   useEffect(() => {
     fetch("/data/gauges.json")
       .then((r) => r.json() as Promise<{ stations: GaugeStation[] }>)
-      .then((d) => setGaugeStations(d.stations ?? []))
+      .then((d) => setBundledGauges(d.stations ?? []))
       .catch((e) => console.error("gauge load failed", e));
   }, []);
+
+  // Stage 3: LIVE CWC gauge levels. Replaces the demo levels when reachable;
+  // silently falls back to the bundled stations + demo readings otherwise.
+  useEffect(() => {
+    fetch("/api/gauges/live")
+      .then((r) => r.json() as Promise<LiveGaugeResponse>)
+      .then((d) => {
+        setGaugeMeta({ source: d.source, fetchedAt: d.fetchedAt, reachable: d.reachable });
+        if (d.reachable && d.stations.length) setLiveGauges(d.stations);
+      })
+      .catch(() => setGaugeMeta(null));
+  }, []);
+
+  // Effective gauge set: LIVE CWC stations (river derived from coordinates via
+  // the same river network the user's location uses, so same-river attribution
+  // stays consistent) when available, else the bundled stations.
+  const usingLive = liveGauges.length > 0 && !!rivers;
+  const gaugeStations = useMemo<GaugeStation[]>(() => {
+    if (!usingLive) return bundledGauges;
+    return liveGauges.map((g) => ({
+      id: g.stationCode,
+      name: g.name,
+      river: nearestRiver(g.lat, g.lng, rivers)?.name ?? "",
+      lat: g.lat,
+      lng: g.lng,
+      dangerLevelM: g.dangerLevelM ?? Number.POSITIVE_INFINITY,
+      highestFloodLevelM: g.highestFloodLevelM ?? Number.POSITIVE_INFINITY,
+    }));
+  }, [usingLive, liveGauges, rivers, bundledGauges]);
 
   // Load OPTIONAL official FRIMS figures — only keep a report that actually
   // has dated district entries (the bundled file is an empty template).
@@ -172,11 +205,28 @@ export default function Home() {
     return m;
   }, [geo, gaugeStations]);
 
-  // Water-LEVEL readings stay demo (no free live level feed); the gauge sheet's
-  // 7-day sparkline and anomaly use live discharge.
+  // Water-LEVEL readings: LIVE CWC levels (with timestamp) when reachable, else
+  // demo. Never fabricated — a live station with no reading is simply omitted.
   const readingById = useMemo(
-    () => new Map<string, GaugeReading>(DEMO_GAUGE_READINGS.map((r) => [r.stationId, r])),
-    []
+    () =>
+      usingLive
+        ? new Map<string, GaugeReading>(
+            liveGauges
+              .filter((g) => g.levelM != null)
+              .map((g) => [
+                g.stationCode,
+                {
+                  stationId: g.stationCode,
+                  levelM: g.levelM as number,
+                  spark7d: [],
+                  trend: g.trend ?? "steady",
+                  timestamp: g.timestamp ?? undefined,
+                  observed: true,
+                },
+              ])
+          )
+        : new Map<string, GaugeReading>(DEMO_GAUGE_READINGS.map((r) => [r.stationId, r])),
+    [usingLive, liveGauges]
   );
 
   const gaugeMarkers: GaugeMarkerData[] = useMemo(
@@ -573,6 +623,7 @@ export default function Home() {
           stations={gaugeStations}
           readings={readingById}
           rivers={rivers}
+          gaugeMeta={gaugeMeta}
           onClose={closeMyArea}
         />
       )}

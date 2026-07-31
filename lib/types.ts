@@ -212,11 +212,46 @@ export type GaugeStatus = "normal" | "warning" | "danger" | "extreme";
 
 export interface GaugeReading {
   stationId: string;
-  /** Current water level (m). DEMO until Stage 3 wires live CWC data. */
+  /** Current water level (m). Live from CWC (Stage 3) or demo fallback. */
   levelM: number;
   /** Last 7 daily levels (m), oldest → newest, for the sparkline. */
   spark7d: number[];
   trend: "rising" | "steady" | "falling";
+  /** ISO time of a LIVE reading (absent for demo data). */
+  timestamp?: string;
+  /** True when this reading is a real observation (not demo). */
+  observed?: boolean;
+}
+
+/**
+ * A live CWC gauge from /api/gauges/live (Stage 3). No river field — the
+ * client derives the river from coordinates via nearestRiver, keeping the
+ * same-river attribution consistent with the user's own river.
+ */
+export interface LiveGauge {
+  stationCode: string;
+  name: string;
+  lat: number;
+  lng: number;
+  warningLevelM: number | null;
+  dangerLevelM: number | null;
+  highestFloodLevelM: number | null;
+  /** Latest observed level (m), or null when the source has no reading. */
+  levelM: number | null;
+  status: GaugeStatus | "unknown";
+  trend: "rising" | "steady" | "falling" | null;
+  /** ISO time of the reading, straight from CWC — shown to the user. */
+  timestamp: string | null;
+}
+
+export interface LiveGaugeResponse {
+  ok: boolean;
+  /** false when CWC FFS could not be reached (never fabricate levels). */
+  reachable: boolean;
+  source: string;
+  fetchedAt: string;
+  region: string;
+  stations: LiveGauge[];
 }
 
 /** Minimal per-marker payload passed to the map layer. */
