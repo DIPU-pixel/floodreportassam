@@ -183,6 +183,67 @@ export function nearbyRivers(
     .sort((a, b) => a.km - b.km);
 }
 
+/** Closest point ON a segment to P, in lat/lng, plus the distance in km. */
+function closestOnSegmentKm(
+  pLat: number,
+  pLng: number,
+  aLng: number,
+  aLat: number,
+  bLng: number,
+  bLat: number
+): { km: number; lat: number; lng: number } {
+  const k = Math.cos((pLat * Math.PI) / 180) * 111.32;
+  const kLat = 110.57;
+  const ax = aLng * k, ay = aLat * kLat, bx = bLng * k, by = bLat * kLat;
+  const px = pLng * k, py = pLat * kLat;
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const km = Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  return { km, lat: aLat + t * (bLat - aLat), lng: aLng + t * (bLng - aLng) };
+}
+
+/**
+ * Like nearbyRivers, but also returns the closest point ON each river to the
+ * user — so Stage 3B can query modelled discharge (GloFAS) at a point on that
+ * river's own channel, not the user's coordinate.
+ */
+export function nearbyRiversDetailed(
+  lat: number,
+  lng: number,
+  fc: GeoJSON.FeatureCollection | null,
+  maxKm: number
+): { name: string; km: number; lat: number; lng: number }[] {
+  if (!fc?.features) return [];
+  const best = new Map<string, { km: number; lat: number; lng: number }>();
+  for (const f of fc.features) {
+    const raw = (f.properties as { name?: string } | null)?.name;
+    if (!raw || !f.geometry) continue;
+    const lines =
+      f.geometry.type === "LineString"
+        ? [f.geometry.coordinates]
+        : f.geometry.type === "MultiLineString"
+        ? f.geometry.coordinates
+        : [];
+    let local: { km: number; lat: number; lng: number } | null = null;
+    for (const line of lines) {
+      for (let i = 1; i < line.length; i++) {
+        const c = closestOnSegmentKm(lat, lng, line[i - 1][0], line[i - 1][1], line[i][0], line[i][1]);
+        if (!local || c.km < local.km) local = c;
+      }
+    }
+    if (local && local.km <= maxKm) {
+      const name = prettyRiver(raw);
+      const cur = best.get(name);
+      if (!cur || local.km < cur.km) best.set(name, local);
+    }
+  }
+  return Array.from(best.entries())
+    .map(([name, v]) => ({ name, km: v.km, lat: v.lat, lng: v.lng }))
+    .sort((a, b) => a.km - b.km);
+}
+
 export function nearestTown(lat: number, lng: number, towns: Town[]): { town: Town; km: number } | null {
   let best: Town | null = null;
   let bestKm = Infinity;

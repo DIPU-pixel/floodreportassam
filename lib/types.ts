@@ -254,6 +254,28 @@ export interface LiveGaugeResponse {
   stations: LiveGauge[];
 }
 
+/**
+ * Modelled river discharge (GloFAS via Open-Meteo) at a point on a river —
+ * Stage 3B. Percentile is "vs the last 365 days" at that point; the status
+ * band is modelled-only and NEVER equates to a gauge danger level.
+ */
+export interface ModelledDischarge {
+  currentM3s: number | null;
+  forecastPeakM3s: number | null;
+  /** 0..1: today's discharge percentile within the past year. */
+  percentile: number | null;
+  trend: "rising" | "steady" | "falling" | null;
+  status: "normal" | "elevated" | "high";
+}
+
+export interface ModelledPointsResponse {
+  ok: boolean;
+  source: string;
+  fetchedAt: string;
+  /** Aligned to the input lats/lngs order. */
+  points: (ModelledDischarge | null)[];
+}
+
 /** Minimal per-marker payload passed to the map layer. */
 export interface GaugeMarkerData {
   id: string;

@@ -1,4 +1,4 @@
-import type { GaugeReading, GaugeStation, GaugeStatus, WaterTrend } from "./types";
+import type { GaugeReading, GaugeStation, GaugeStatus, ModelledDischarge, WaterTrend } from "./types";
 import { gaugeStatus, nearestGaugeOnRiver, riverKey } from "./gauges";
 
 /**
@@ -56,6 +56,8 @@ export interface RiverRow {
     /** ISO time of a live reading (absent for demo levels). */
     timestamp?: string;
   } | null;
+  /** Stage 3B: GloFAS modelled discharge for a gaugeless river. */
+  modelled?: ModelledDischarge | null;
 }
 
 /**
@@ -69,12 +71,22 @@ export function buildRiverRows(
   stations: GaugeStation[],
   readings: Map<string, GaugeReading>,
   lat: number,
-  lng: number
+  lng: number,
+  modelledByRiver?: Map<string, ModelledDischarge | null>
 ): RiverRow[] {
   return nearby.map((r) => {
     const g = nearestGaugeOnRiver(stations, r.name, lat, lng);
     if (!g) {
-      return { name: r.name, nameAs: riverNameAs(r.name), km: r.km, tier: "unmonitored", gauge: null };
+      // No gauge → modelled (GloFAS) if we have it, else unmonitored.
+      const modelled = modelledByRiver?.get(riverKey(r.name)) ?? null;
+      return {
+        name: r.name,
+        nameAs: riverNameAs(r.name),
+        km: r.km,
+        tier: modelled ? "modelled" : "unmonitored",
+        gauge: null,
+        modelled,
+      };
     }
     const rd = readings.get(g.station.id);
     const levelM = rd?.levelM ?? g.station.dangerLevelM - 2;

@@ -7,17 +7,19 @@ import StreetViewLink from "@/components/StreetViewLink";
 import NearbyRivers from "@/components/NearbyRivers";
 import Sparkline from "@/components/Sparkline";
 import { RISK_COLORS } from "@/lib/risk";
-import { GAUGE_STATUS_LABEL, nearestGaugeOnRiver } from "@/lib/gauges";
+import { GAUGE_STATUS_LABEL, nearestGaugeOnRiver, riverKey } from "@/lib/gauges";
 import { baselineFor, dischargeStatus, DISCHARGE_STATUS_LABEL, TREND_LABEL } from "@/lib/discharge";
 import { buildRiverRows, worstRiverRow } from "@/lib/rivers";
 import { areaSummary, type MyPlace } from "@/lib/myArea";
 import { districtHelpline, STANDARD_HELPLINES } from "@/lib/helplines";
-import { haversineKm, nearbyRivers, nearestRiver } from "@/lib/geo";
+import { haversineKm, nearbyRiversDetailed, nearestRiver } from "@/lib/geo";
 import type {
   DistrictRisk,
   FrimsEntry,
   GaugeReading,
   GaugeStation,
+  ModelledDischarge,
+  ModelledPointsResponse,
   PlaceInfoResponse,
   PointDischarge,
   PointFloodResponse,
@@ -107,16 +109,39 @@ export default function MyAreaPanel({
   const river = useMemo(() => nearestRiver(place.lat, place.lng, rivers), [place.lat, place.lng, rivers]);
 
   // Stage 2: ALL rivers within 10 km (widen to 25 km if none), ranked nearest
-  // first. Each carries only its own same-river gauge.
+  // first, each with the closest point on its own channel (for Stage 3B).
   const nearby = useMemo(() => {
     if (!rivers) return [];
-    const within10 = nearbyRivers(place.lat, place.lng, rivers, 10);
-    return within10.length > 0 ? within10 : nearbyRivers(place.lat, place.lng, rivers, 25);
+    const within10 = nearbyRiversDetailed(place.lat, place.lng, rivers, 10);
+    return within10.length > 0 ? within10 : nearbyRiversDetailed(place.lat, place.lng, rivers, 25);
   }, [rivers, place.lat, place.lng]);
 
+  // Stage 3B: modelled GloFAS discharge for rivers with NO same-river gauge,
+  // queried at a point on each river's own channel. Keyed by river key.
+  const [modelledByRiver, setModelledByRiver] = useState<Map<string, ModelledDischarge | null>>(new Map());
+  useEffect(() => {
+    const gaugeless = nearby.filter((r) => !nearestGaugeOnRiver(stations, r.name, place.lat, place.lng));
+    if (gaugeless.length === 0) {
+      setModelledByRiver(new Map());
+      return;
+    }
+    const ctrl = new AbortController();
+    const lats = gaugeless.map((r) => r.lat.toFixed(4)).join(",");
+    const lngs = gaugeless.map((r) => r.lng.toFixed(4)).join(",");
+    fetch(`/api/discharge/points?lats=${lats}&lngs=${lngs}`, { signal: ctrl.signal })
+      .then((r) => r.json() as Promise<ModelledPointsResponse>)
+      .then((d) => {
+        const m = new Map<string, ModelledDischarge | null>();
+        if (d.ok) gaugeless.forEach((r, i) => m.set(riverKey(r.name), d.points[i] ?? null));
+        setModelledByRiver(m);
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [nearby, stations, place.lat, place.lng]);
+
   const riverRows = useMemo(
-    () => buildRiverRows(nearby, stations, readings, place.lat, place.lng),
-    [nearby, stations, readings, place.lat, place.lng]
+    () => buildRiverRows(nearby, stations, readings, place.lat, place.lng, modelledByRiver),
+    [nearby, stations, readings, place.lat, place.lng, modelledByRiver]
   );
 
   // Overall card risk from same-river gauges only — worst wins, names the river.

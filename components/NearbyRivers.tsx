@@ -82,9 +82,32 @@ export default function NearbyRivers({
                       )}
                     </span>
                   </>
+                ) : r.modelled ? (
+                  <span className="text-[10px] text-sky-300/90">
+                    modelled {r.modelled.currentM3s?.toLocaleString()} m³/s
+                    {r.modelled.trend && (
+                      <> · {TREND_LABEL[r.modelled.trend].arrow} {TREND_LABEL[r.modelled.trend].en}</>
+                    )}
+                    {r.modelled.percentile != null && (
+                      <>
+                        {" "}·{" "}
+                        <span
+                          className={
+                            r.modelled.status === "high"
+                              ? "text-orange-300"
+                              : r.modelled.status === "elevated"
+                              ? "text-yellow-300"
+                              : "text-slate-400"
+                          }
+                        >
+                          {Math.round(r.modelled.percentile * 100)}th pct vs normal
+                        </span>
+                      </>
+                    )}
+                  </span>
                 ) : (
                   <span className="text-[10px] text-slate-500">
-                    no gauge on this river · এই নদীত গেজ নাই
+                    no gauge or model · গেজ বা মডেল নাই
                   </span>
                 )}
               </div>
