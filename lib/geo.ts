@@ -143,6 +143,46 @@ export function nearestRiver(
   return best ? { name: prettyRiver(best), km: bestKm } : null;
 }
 
+/**
+ * ALL named rivers within `maxKm` of a point, nearest first (one entry per
+ * river name, at its closest approach). Stage 2 uses this instead of a single
+ * nearest river so each nearby river can carry its OWN same-river gauge status.
+ */
+export function nearbyRivers(
+  lat: number,
+  lng: number,
+  fc: GeoJSON.FeatureCollection | null,
+  maxKm: number
+): { name: string; km: number }[] {
+  if (!fc?.features) return [];
+  const best = new Map<string, number>(); // prettified name → min distance (km)
+  for (const f of fc.features) {
+    const raw = (f.properties as { name?: string } | null)?.name;
+    if (!raw || !f.geometry) continue;
+    const lines =
+      f.geometry.type === "LineString"
+        ? [f.geometry.coordinates]
+        : f.geometry.type === "MultiLineString"
+        ? f.geometry.coordinates
+        : [];
+    let localBest = Infinity;
+    for (const line of lines) {
+      for (let i = 1; i < line.length; i++) {
+        const d = distToSegmentKm(lat, lng, line[i - 1][0], line[i - 1][1], line[i][0], line[i][1]);
+        if (d < localBest) localBest = d;
+      }
+    }
+    if (localBest <= maxKm) {
+      const name = prettyRiver(raw);
+      const cur = best.get(name);
+      if (cur === undefined || localBest < cur) best.set(name, localBest);
+    }
+  }
+  return Array.from(best.entries())
+    .map(([name, km]) => ({ name, km }))
+    .sort((a, b) => a.km - b.km);
+}
+
 export function nearestTown(lat: number, lng: number, towns: Town[]): { town: Town; km: number } | null {
   let best: Town | null = null;
   let bestKm = Infinity;

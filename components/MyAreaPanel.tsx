@@ -4,13 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import DragSheet from "@/components/DragSheet";
 import AlertsButton from "@/components/AlertsButton";
 import StreetViewLink from "@/components/StreetViewLink";
+import NearbyRivers from "@/components/NearbyRivers";
 import Sparkline from "@/components/Sparkline";
 import { RISK_COLORS } from "@/lib/risk";
-import { GAUGE_COLORS, GAUGE_STATUS_LABEL, gaugeStatus, nearestGaugeOnRiver } from "@/lib/gauges";
+import { GAUGE_STATUS_LABEL, nearestGaugeOnRiver } from "@/lib/gauges";
 import { baselineFor, dischargeStatus, DISCHARGE_STATUS_LABEL, TREND_LABEL } from "@/lib/discharge";
+import { buildRiverRows, worstRiverRow } from "@/lib/rivers";
 import { areaSummary, type MyPlace } from "@/lib/myArea";
 import { districtHelpline, STANDARD_HELPLINES } from "@/lib/helplines";
-import { haversineKm, nearestRiver } from "@/lib/geo";
+import { haversineKm, nearbyRivers, nearestRiver } from "@/lib/geo";
 import type {
   DistrictRisk,
   FrimsEntry,
@@ -102,6 +104,22 @@ export default function MyAreaPanel({
 
   const river = useMemo(() => nearestRiver(place.lat, place.lng, rivers), [place.lat, place.lng, rivers]);
 
+  // Stage 2: ALL rivers within 10 km (widen to 25 km if none), ranked nearest
+  // first. Each carries only its own same-river gauge.
+  const nearby = useMemo(() => {
+    if (!rivers) return [];
+    const within10 = nearbyRivers(place.lat, place.lng, rivers, 10);
+    return within10.length > 0 ? within10 : nearbyRivers(place.lat, place.lng, rivers, 25);
+  }, [rivers, place.lat, place.lng]);
+
+  const riverRows = useMemo(
+    () => buildRiverRows(nearby, stations, readings, place.lat, place.lng),
+    [nearby, stations, readings, place.lat, place.lng]
+  );
+
+  // Overall card risk from same-river gauges only — worst wins, names the river.
+  const worstRow = useMemo(() => worstRiverRow(riverRows), [riverRows]);
+
   // The gauge whose status may actually be attributed here: same river only.
   const onRiverGauge = useMemo(
     () => (river ? nearestGaugeOnRiver(stations, river.name, place.lat, place.lng) : null),
@@ -111,12 +129,6 @@ export default function MyAreaPanel({
   // Prefer live point rain; fall back to the district-level figures.
   const past48 = rain && rainLive ? rain.past48hMm : risk?.components.past48hMm ?? 0;
   const next72 = rain && rainLive ? rain.next72hMm : risk?.components.next72hMm ?? 0;
-
-  // Gauge status ONLY for a same-river gauge (else null → neutral message).
-  const gLevel = onRiverGauge
-    ? readings.get(onRiverGauge.station.id)?.levelM ?? onRiverGauge.station.dangerLevelM - 2
-    : 0;
-  const gStatus = onRiverGauge ? gaugeStatus(onRiverGauge.station, gLevel) : null;
 
   // Discharge anomaly is only meaningful against a same-river gauge's baseline.
   const anomaly =
@@ -219,55 +231,33 @@ export default function MyAreaPanel({
             </div>
           )}
 
-          {/* Nearest river + gauge — a gauge status is shown ONLY when the gauge
-              is on the SAME river; otherwise a neutral no-gauge note so we never
-              borrow a cross-river "above danger" badge. */}
-          <div className="mt-3 rounded-xl bg-slate-800/60 p-2.5 text-[12px]">
-            {river && (
-              <p>
-                <span className="text-slate-400">Nearest river · ওচৰৰ নদী:</span>{" "}
-                <span className="font-semibold">{river.name}</span>, ~{river.km.toFixed(1)} km
+          {/* Worst same-river gauge above danger → the card's headline risk,
+              naming THAT river specifically (never a cross-river badge). */}
+          {worstRow && worstRow.gauge && (
+            <div className="mt-3 rounded-xl border-l-4 border-red-500 bg-red-950/40 p-2.5">
+              <p className="text-sm font-bold text-red-200">
+                ⚠ {worstRow.name}
+                {worstRow.nameAs && <span className="font-normal"> · {worstRow.nameAs}</span>}{" "}
+                — {GAUGE_STATUS_LABEL[worstRow.gauge.status].en}
               </p>
-            )}
+              <p className="text-[11px] text-red-300/90">
+                {worstRow.gauge.name}: {worstRow.gauge.levelM.toFixed(2)} m / danger{" "}
+                {worstRow.gauge.dangerLevelM.toFixed(2)} m · {GAUGE_STATUS_LABEL[worstRow.gauge.status].as}
+              </p>
+            </div>
+          )}
 
-            {onRiverGauge && gStatus ? (
-              <div className="mt-1.5">
-                <p className="flex flex-wrap items-center gap-1.5">
-                  <span className="rounded bg-emerald-900/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
-                    Gauged · গেজ
-                  </span>
-                  <span className="text-slate-400">on {river?.name}:</span>{" "}
-                  <span className="font-semibold">{onRiverGauge.station.name}</span>, ~
-                  {onRiverGauge.km.toFixed(0)} km
-                  <span
-                    className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                    style={{ backgroundColor: GAUGE_COLORS[gStatus] }}
-                  >
-                    {GAUGE_STATUS_LABEL[gStatus].en} · {GAUGE_STATUS_LABEL[gStatus].as}
-                  </span>
-                </p>
-                <p className="mt-0.5 text-[11px] text-slate-400">
-                  {gLevel.toFixed(2)} m / danger {onRiverGauge.station.dangerLevelM.toFixed(2)} m
-                  <span className="text-slate-500"> · Source: CWC (demo level — live in Stage 3)</span>
-                </p>
-              </div>
-            ) : (
-              river && (
-                <p className="mt-1.5 rounded-lg bg-slate-800 p-2 text-[11px] leading-snug text-slate-300">
-                  <span className="font-semibold text-slate-200">No gauge on {river.name} near you.</span>{" "}
-                  <span className="text-slate-400">{river.name} নদীৰ ওচৰত কোনো গেজ নাই।</span>
-                  {nearest && (
-                    <>
-                      {" "}Nearest gauge:{" "}
-                      <span className="font-semibold text-slate-200">{nearest.station.name}</span> on{" "}
-                      <span className="font-semibold">{nearest.station.river}</span>, ~{nearest.km.toFixed(0)} km —{" "}
-                      <span className="text-slate-400">a different river, so its level does not apply to you.</span>
-                    </>
-                  )}
-                </p>
-              )
-            )}
-          </div>
+          {/* Stage 2: ranked nearby rivers, each with its OWN same-river gauge. */}
+          <NearbyRivers
+            rows={riverRows}
+            crossRiverNote={
+              nearest
+                ? `No gauge on any river near you. Nearest gauge: ${nearest.station.name} on ${nearest.station.river}, ~${nearest.km.toFixed(
+                    0
+                  )} km — a different river, so its level does not apply to you. · ওচৰৰ কোনো নদীত গেজ নাই।`
+                : undefined
+            }
+          />
 
           {/* Modelled river discharge (GloFAS via Open-Meteo). Always labelled
               modelled; the "% of baseline" band only appears when a same-river
