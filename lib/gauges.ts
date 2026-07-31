@@ -1,4 +1,46 @@
 import type { GaugeReading, GaugeStatus, GaugeStation } from "./types";
+import { haversineKm, prettyRiver } from "./geo";
+
+/**
+ * Normalised comparison key for a river name, so a location's river (from OSM
+ * geometry, e.g. "DIKHOW NODI") can be matched to a gauge's `river` field
+ * (e.g. "Brahmaputra"). Lower-cased, suffix-stripped, alphanumerics only.
+ */
+export function riverKey(name: string): string {
+  return prettyRiver(name).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** True only when two river names refer to the SAME river (conservative). */
+export function sameRiver(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false;
+  const ka = riverKey(a);
+  return ka.length > 0 && ka === riverKey(b);
+}
+
+/**
+ * Nearest gauge that sits on the SAME river as a location — the ONLY gauge
+ * whose danger status may be attributed to that location. Returns null when no
+ * gauge exists on that river (then the UI must say so, never borrow a
+ * cross-river "above danger" badge). See lib/gauges.test.ts.
+ */
+export function nearestGaugeOnRiver(
+  stations: GaugeStation[],
+  riverName: string,
+  lat: number,
+  lng: number
+): { station: GaugeStation; km: number } | null {
+  let best: GaugeStation | null = null;
+  let bestKm = Infinity;
+  for (const s of stations) {
+    if (!sameRiver(s.river, riverName)) continue;
+    const km = haversineKm(lat, lng, s.lat, s.lng);
+    if (km < bestKm) {
+      bestKm = km;
+      best = s;
+    }
+  }
+  return best ? { station: best, km: bestKm } : null;
+}
 
 /**
  * Gauge status = current water level relative to the station's thresholds.

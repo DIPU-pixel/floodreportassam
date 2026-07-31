@@ -20,7 +20,9 @@ export function districtSummaryText(
   lines.push(`Flood risk: ${LEVEL_TEXT[risk.level]} (${risk.score}/100, modelled estimate)`);
   lines.push(`Rain: ${risk.components.past48hMm} mm last 48h · ${risk.components.next72hMm} mm next 72h`);
   lines.push(
-    `Nearest river discharge: ${Math.round(risk.components.dischargeAnomaly * 100)}% of high baseline`
+    `Modelled river discharge (nearest gauge): ${Math.round(
+      risk.components.dischargeAnomaly * 100
+    )}% of high baseline`
   );
 
   if (frims?.data) {

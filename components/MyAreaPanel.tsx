@@ -6,7 +6,7 @@ import AlertsButton from "@/components/AlertsButton";
 import StreetViewLink from "@/components/StreetViewLink";
 import Sparkline from "@/components/Sparkline";
 import { RISK_COLORS } from "@/lib/risk";
-import { GAUGE_COLORS, GAUGE_STATUS_LABEL, gaugeStatus } from "@/lib/gauges";
+import { GAUGE_COLORS, GAUGE_STATUS_LABEL, gaugeStatus, nearestGaugeOnRiver } from "@/lib/gauges";
 import { baselineFor, dischargeStatus, DISCHARGE_STATUS_LABEL, TREND_LABEL } from "@/lib/discharge";
 import { areaSummary, type MyPlace } from "@/lib/myArea";
 import { districtHelpline, STANDARD_HELPLINES } from "@/lib/helplines";
@@ -85,6 +85,8 @@ export default function MyAreaPanel({
     return () => ctrl.abort();
   }, [place.name, place.districtName]);
 
+  // Raw nearest gauge — used ONLY to tell the user where the closest gauge is
+  // when none exists on their own river. Its status is NEVER shown as theirs.
   const nearest = useMemo(() => {
     let best: GaugeStation | null = null;
     let bestKm = Infinity;
@@ -98,19 +100,28 @@ export default function MyAreaPanel({
     return best ? { station: best, km: bestKm } : null;
   }, [stations, place.lat, place.lng]);
 
+  const river = useMemo(() => nearestRiver(place.lat, place.lng, rivers), [place.lat, place.lng, rivers]);
+
+  // The gauge whose status may actually be attributed here: same river only.
+  const onRiverGauge = useMemo(
+    () => (river ? nearestGaugeOnRiver(stations, river.name, place.lat, place.lng) : null),
+    [river, stations, place.lat, place.lng]
+  );
+
   // Prefer live point rain; fall back to the district-level figures.
   const past48 = rain && rainLive ? rain.past48hMm : risk?.components.past48hMm ?? 0;
   const next72 = rain && rainLive ? rain.next72hMm : risk?.components.next72hMm ?? 0;
 
-  const gLevel = nearest
-    ? readings.get(nearest.station.id)?.levelM ?? nearest.station.dangerLevelM - 2
+  // Gauge status ONLY for a same-river gauge (else null → neutral message).
+  const gLevel = onRiverGauge
+    ? readings.get(onRiverGauge.station.id)?.levelM ?? onRiverGauge.station.dangerLevelM - 2
     : 0;
-  const gStatus = nearest ? gaugeStatus(nearest.station, gLevel) : null;
+  const gStatus = onRiverGauge ? gaugeStatus(onRiverGauge.station, gLevel) : null;
 
-  const anomaly = flood && nearest ? flood.peakDischarge / baselineFor(nearest.station.id) : null;
+  // Discharge anomaly is only meaningful against a same-river gauge's baseline.
+  const anomaly =
+    flood && onRiverGauge ? flood.peakDischarge / baselineFor(onRiverGauge.station.id) : null;
   const dStatus = anomaly != null ? dischargeStatus(anomaly) : null;
-
-  const river = useMemo(() => nearestRiver(place.lat, place.lng, rivers), [place.lat, place.lng, rivers]);
 
   const summary = risk ? areaSummary(risk.level, past48, next72) : null;
   const specificHelpline = districtHelpline(place.districtId);
@@ -208,48 +219,90 @@ export default function MyAreaPanel({
             </div>
           )}
 
-          {/* Nearest river + nearest gauge */}
+          {/* Nearest river + gauge — a gauge status is shown ONLY when the gauge
+              is on the SAME river; otherwise a neutral no-gauge note so we never
+              borrow a cross-river "above danger" badge. */}
           <div className="mt-3 rounded-xl bg-slate-800/60 p-2.5 text-[12px]">
             {river && (
               <p>
-                <span className="text-slate-400">Nearest river:</span>{" "}
+                <span className="text-slate-400">Nearest river · ওচৰৰ নদী:</span>{" "}
                 <span className="font-semibold">{river.name}</span>, ~{river.km.toFixed(1)} km
               </p>
             )}
-            {nearest && (
-              <p className="mt-0.5 flex items-center gap-1.5">
-                <span className="text-slate-400">Nearest gauge:</span>{" "}
-                <span className="font-semibold">{nearest.station.name}</span> ({nearest.station.river}), ~
-                {nearest.km.toFixed(0)} km
-                {gStatus && (
+
+            {onRiverGauge && gStatus ? (
+              <div className="mt-1.5">
+                <p className="flex flex-wrap items-center gap-1.5">
+                  <span className="rounded bg-emerald-900/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
+                    Gauged · গেজ
+                  </span>
+                  <span className="text-slate-400">on {river?.name}:</span>{" "}
+                  <span className="font-semibold">{onRiverGauge.station.name}</span>, ~
+                  {onRiverGauge.km.toFixed(0)} km
                   <span
                     className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white"
                     style={{ backgroundColor: GAUGE_COLORS[gStatus] }}
                   >
-                    {GAUGE_STATUS_LABEL[gStatus].en}
+                    {GAUGE_STATUS_LABEL[gStatus].en} · {GAUGE_STATUS_LABEL[gStatus].as}
                   </span>
-                )}
-              </p>
+                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  {gLevel.toFixed(2)} m / danger {onRiverGauge.station.dangerLevelM.toFixed(2)} m
+                  <span className="text-slate-500"> · Source: CWC (demo level — live in Stage 3)</span>
+                </p>
+              </div>
+            ) : (
+              river && (
+                <p className="mt-1.5 rounded-lg bg-slate-800 p-2 text-[11px] leading-snug text-slate-300">
+                  <span className="font-semibold text-slate-200">No gauge on {river.name} near you.</span>{" "}
+                  <span className="text-slate-400">{river.name} নদীৰ ওচৰত কোনো গেজ নাই।</span>
+                  {nearest && (
+                    <>
+                      {" "}Nearest gauge:{" "}
+                      <span className="font-semibold text-slate-200">{nearest.station.name}</span> on{" "}
+                      <span className="font-semibold">{nearest.station.river}</span>, ~{nearest.km.toFixed(0)} km —{" "}
+                      <span className="text-slate-400">a different river, so its level does not apply to you.</span>
+                    </>
+                  )}
+                </p>
+              )
             )}
           </div>
 
-          {/* Water trend — 14-day discharge (7 past + 7 forecast) */}
-          {flood && flood.series14.length > 0 && dStatus && (
+          {/* Modelled river discharge (GloFAS via Open-Meteo). Always labelled
+              modelled; the "% of baseline" band only appears when a same-river
+              gauge exists to calibrate it — otherwise trend only, no danger band. */}
+          {flood && flood.series14.length > 0 && (
             <div className="mt-3 rounded-xl bg-slate-800/60 p-2.5">
-              <div className="mb-1 flex items-baseline justify-between">
-                <p className="text-[11px] text-slate-400">Water trend · discharge 7d past + 7d fcst.</p>
-                <p className="text-[11px] font-semibold" style={{ color: DISCHARGE_STATUS_LABEL[dStatus].color }}>
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                  <span className="rounded bg-sky-900/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-300">
+                    Modelled · মডেল
+                  </span>
+                  River flow · 7d past + 7d fcst.
+                </p>
+                <p
+                  className="text-[11px] font-semibold"
+                  style={{ color: dStatus ? DISCHARGE_STATUS_LABEL[dStatus].color : "#38bdf8" }}
+                >
                   {TREND_LABEL[flood.trend].arrow} {TREND_LABEL[flood.trend].en} · {TREND_LABEL[flood.trend].as}
                 </p>
               </div>
               <Sparkline
                 values={flood.series14}
-                color={DISCHARGE_STATUS_LABEL[dStatus].color}
+                color={dStatus ? DISCHARGE_STATUS_LABEL[dStatus].color : "#38bdf8"}
                 markerIndex={flood.todayIndex}
               />
               <p className="mt-1 text-[10px] text-slate-500">
                 Peak {Math.round(flood.peakDischarge).toLocaleString()} m³/s ·{" "}
-                {Math.round((anomaly ?? 0) * 100)}% of nearest-gauge high baseline (modelled)
+                {onRiverGauge && dStatus ? (
+                  <>
+                    {Math.round((anomaly ?? 0) * 100)}% of {onRiverGauge.station.name} high baseline ·{" "}
+                    {DISCHARGE_STATUS_LABEL[dStatus].en} (modelled)
+                  </>
+                ) : (
+                  <>modelled flow (GloFAS) — no gauge on {river?.name ?? "this river"} to set a danger level</>
+                )}
               </p>
             </div>
           )}

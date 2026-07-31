@@ -244,18 +244,26 @@ export default function Home() {
 
   const isRainingNow = rainIntensity > 0;
 
+  // Gauges currently at/above danger — each traces to a named station + its own
+  // river; this is the ONLY source for any "above danger" claim in the UI.
+  const aboveDangerGauges = useMemo(
+    () =>
+      gaugeMarkers
+        .filter((g) => g.status === "danger" || g.status === "extreme")
+        .map((g) => {
+          const s = gaugeStations.find((st) => st.id === g.id);
+          if (!s) return null;
+          const levelM = readingById.get(s.id)?.levelM ?? s.dangerLevelM;
+          return { name: s.name, river: s.river, levelM, dangerLevelM: s.dangerLevelM };
+        })
+        .filter((g): g is NonNullable<typeof g> => g !== null),
+    [gaugeMarkers, gaugeStations, readingById]
+  );
+
   // Rivers to highlight red: those whose gauge is at/above danger level.
   const alertRivers = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          gaugeMarkers
-            .filter((g) => g.status === "danger" || g.status === "extreme")
-            .map((g) => gaugeStations.find((s) => s.id === g.id)?.river)
-            .filter((r): r is string => !!r)
-        )
-      ),
-    [gaugeMarkers, gaugeStations]
+    () => Array.from(new Set(aboveDangerGauges.map((g) => g.river))),
+    [aboveDangerGauges]
   );
 
   const selectedDischarge = useMemo(
@@ -514,9 +522,8 @@ export default function Home() {
         {/* Plain-language "what's happening" line — the first thing to read. */}
         <SituationBar
           risks={risks}
-          gaugesAboveDanger={
-            gaugeMarkers.filter((g) => g.status === "danger" || g.status === "extreme").length
-          }
+          gaugesAboveDanger={aboveDangerGauges.length}
+          aboveDangerGauges={aboveDangerGauges}
           officialDistricts={frimsById.size}
           officialDate={frims?.date}
           rainingNow={isRainingNow}
