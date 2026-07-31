@@ -40,12 +40,17 @@ interface AboveWarning {
   value: number;
 }
 
-async function getJson<T>(url: string): Promise<T | null> {
+const diagnostics: Record<string, string> = {};
+
+async function getJson<T>(label: string, url: string): Promise<T | null> {
   try {
     const res = await fetch(url, { headers: HEADERS, cache: "no-store", signal: AbortSignal.timeout(12000) });
+    diagnostics[label] = `http ${res.status}`;
     if (!res.ok) return null;
     return (await res.json()) as T;
-  } catch {
+  } catch (e) {
+    // Distinguish block/timeout/DNS on the next deployed test.
+    diagnostics[label] = `${(e as Error)?.name ?? "error"}: ${(e as Error)?.message ?? ""}`.slice(0, 120);
     return null;
   }
 }
@@ -60,9 +65,10 @@ export async function GET() {
     })
   );
   const [above, master] = await Promise.all([
-    getJson<AboveWarning[]>(`${FFS}/ffm/api/station-water-level-above-warning/`),
-    getJson<StaticStation[]>(`${FFS}/iam/api/flood-forecast-static/specification/?specification=${spec}`),
+    getJson<AboveWarning[]>("aboveWarning", `${FFS}/ffm/api/station-water-level-above-warning/`),
+    getJson<StaticStation[]>("master", `${FFS}/iam/api/flood-forecast-static/specification/?specification=${spec}`),
   ]);
+  const region = process.env.VERCEL_REGION ?? "local";
 
   const fetchedAt = new Date().toISOString();
   const source = "CWC Flood Forecasting (ffs.india-water.gov.in)";
@@ -73,8 +79,10 @@ export async function GET() {
       reachable: false,
       source,
       fetchedAt,
+      region,
+      diagnostics,
       message:
-        "CWC FFS did not respond from the server — it may block datacenter (Vercel) IPs. No data shown rather than fabricated.",
+        "CWC FFS did not respond from the server — it may block datacenter (Vercel) IPs or be geo-restricted. No data shown rather than fabricated.",
     });
   }
 
@@ -99,6 +107,7 @@ export async function GET() {
     reachable: true,
     source,
     fetchedAt,
+    region,
     nationwideAboveWarning: above.length,
     assamStationCount: stations.length,
     assamAboveWarning: stations.filter((s) => s.live).length,
