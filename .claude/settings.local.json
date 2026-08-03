@@ -36,7 +36,10 @@
       "Bash(curl -s -o /dev/null -w \"root=%{http_code}\\\\n\" http://localhost:3001/)",
       "Bash(curl -s \"http://localhost:3001/api/gauges/live\")",
       "Bash(node -e 'let d=\"\";process.stdin.on\\(\"data\",c=>d+=c\\).on\\(\"end\",\\(\\)=>{try{const j=JSON.parse\\(d\\);console.log\\(\"live route: ok\",j.ok,\"reachable\",j.reachable,\"count\",j.stations.length\\)}catch\\(e\\){console.log\\(\"err\",d.slice\\(0,120\\)\\)}}\\)')",
-      "Bash(curl -s -o /tmp/help.json -w '%{http_code}' https://floodreportassam.vercel.app/api/help)"
+      "Bash(curl -s -o /tmp/help.json -w '%{http_code}' https://floodreportassam.vercel.app/api/help)",
+      "Bash(curl -s https://floodreportassam.vercel.app/api/help)",
+      "Bash(curl -s https://floodreportassam.vercel.app/api/help/8b6ecd4b-5520-4d03-afa2-512c9bb973ec)",
+      "Bash(curl -s -X PATCH https://floodreportassam.vercel.app/api/help/8b6ecd4b-5520-4d03-afa2-512c9bb973ec -H 'content-type: application/json' -d '{\"action\":\"resolve\"}')"
     ]
   }
 }
