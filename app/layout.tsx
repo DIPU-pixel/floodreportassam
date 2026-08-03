@@ -11,8 +11,28 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Assam Flood Watch | অসম বান নিৰীক্ষণ",
   description: DESCRIPTION,
-  manifest: "/manifest.webmanifest",
   applicationName: "Assam Flood Watch",
+  manifest: "/manifest.webmanifest",
+  keywords: [
+    "Assam flood",
+    "Assam flood map",
+    "Assam flood watch",
+    "flood alert Assam",
+    "Brahmaputra flood",
+    "ASDMA",
+    "CWC flood",
+    "অসম বান",
+    "বান নিৰীক্ষণ",
+    "Assam flood help",
+    "flood rescue Assam",
+  ],
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
+  // Set NEXT_PUBLIC_GOOGLE_VERIFICATION in Vercel to the token Google Search
+  // Console gives you (the "HTML tag" method) to verify ownership.
+  verification: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION }
+    : undefined,
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/icon.svg" }],
