@@ -67,7 +67,7 @@ export default function AlertsButton({
         onClick={onClick}
         disabled={busy}
         aria-pressed={on}
-        className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold disabled:opacity-60 ${
+        className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-transform active:scale-95 disabled:opacity-60 ${
           on ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-100"
         }`}
       >

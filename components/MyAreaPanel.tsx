@@ -11,6 +11,7 @@ import { GAUGE_STATUS_LABEL, nearestGaugeOnRiver, riverKey } from "@/lib/gauges"
 import { baselineFor, dischargeStatus, DISCHARGE_STATUS_LABEL, TREND_LABEL } from "@/lib/discharge";
 import { buildRiverRows, worstRiverRow } from "@/lib/rivers";
 import { areaSummary, type MyPlace } from "@/lib/myArea";
+import { useCountUp } from "@/lib/useCountUp";
 import { districtHelpline, STANDARD_HELPLINES } from "@/lib/helplines";
 import { haversineKm, nearbyRiversDetailed, nearestRiver } from "@/lib/geo";
 import type {
@@ -162,6 +163,11 @@ export default function MyAreaPanel({
     flood && onRiverGauge ? flood.peakDischarge / baselineFor(onRiverGauge.station.id) : null;
   const dStatus = anomaly != null ? dischargeStatus(anomaly) : null;
 
+  // Count-up on the three headline stats (snaps instantly under reduced motion).
+  const past48Shown = Math.round(useCountUp(past48));
+  const next72Shown = Math.round(useCountUp(next72));
+  const scoreShown = Math.round(useCountUp(risk?.score ?? 0));
+
   const summary = risk ? areaSummary(risk.level, past48, next72) : null;
   const specificHelpline = districtHelpline(place.districtId);
 
@@ -242,16 +248,16 @@ export default function MyAreaPanel({
           ) : (
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-xl bg-slate-800/80 p-2">
-                <p className="text-base font-bold">{past48} mm</p>
+                <p className="text-base font-bold tabular-nums">{past48Shown} mm</p>
                 <p className="text-[10px] text-slate-400">Rain 48h (obs.)</p>
               </div>
               <div className="rounded-xl bg-slate-800/80 p-2">
-                <p className="text-base font-bold">{next72} mm</p>
+                <p className="text-base font-bold tabular-nums">{next72Shown} mm</p>
                 <p className="text-[10px] text-slate-400">Rain 72h (fcst.)</p>
               </div>
               <div className="rounded-xl bg-slate-800/80 p-2">
-                <p className="text-base font-bold" style={{ color: risk ? RISK_COLORS[risk.level] : undefined }}>
-                  {risk?.score ?? "—"}
+                <p className="text-base font-bold tabular-nums" style={{ color: risk ? RISK_COLORS[risk.level] : undefined }}>
+                  {risk ? scoreShown : "—"}
                 </p>
                 <p className="text-[10px] text-slate-400">District risk /100</p>
               </div>

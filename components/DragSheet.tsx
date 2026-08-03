@@ -45,7 +45,11 @@ export default function DragSheet({
     if (!dragging) return;
     if (snap) {
       const dh = startRef.current.y - e.clientY;
-      setHeightPx(Math.min(window.innerHeight * 0.9, Math.max(60, startRef.current.h + dh)));
+      const max = window.innerHeight * 0.9;
+      let next = startRef.current.h + dh;
+      // Rubber-band: past the max height, movement gets progressively stiffer.
+      if (next > max) next = max + (next - max) * 0.2;
+      setHeightPx(Math.min(max + 40, Math.max(60, next)));
     } else {
       setTranslateY(Math.max(0, e.clientY - startRef.current.y));
     }
@@ -64,12 +68,18 @@ export default function DragSheet({
     }
   };
 
+  // Spring-ish settle when not actively dragging.
+  const SPRING = "cubic-bezier(0.22, 1, 0.36, 1)";
   const style: React.CSSProperties = snap
-    ? { height: heightPx ?? undefined, transition: dragging ? "none" : "height 220ms ease" }
-    : { transform: `translateY(${translateY}px)`, transition: dragging ? "none" : "transform 220ms ease" };
+    ? { height: heightPx ?? undefined, transition: dragging ? "none" : `height 320ms ${SPRING}` }
+    : { transform: `translateY(${translateY}px)`, transition: dragging ? "none" : `transform 320ms ${SPRING}` };
 
   return (
-    <div className={`pointer-events-auto absolute inset-x-0 bottom-20 mx-auto max-w-md px-3 ${zClass}`}>
+    <div
+      className={`animate-sheet-in pointer-events-auto absolute inset-x-0 mx-auto max-w-md px-3 ${zClass}`}
+      // Sit clear of the bottom tab bar AND the phone's home-indicator inset.
+      style={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
+    >
       <div
         role="dialog"
         aria-label={ariaLabel}
@@ -86,7 +96,10 @@ export default function DragSheet({
         >
           <span className="h-1.5 w-10 rounded-full bg-slate-600" />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        {/* overscroll-contain stops scroll chaining to the map; smooth momentum. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]">
+          {children}
+        </div>
       </div>
     </div>
   );

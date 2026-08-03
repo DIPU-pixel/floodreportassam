@@ -25,7 +25,7 @@ export default function StreetViewLink({
         href={streetViewUrl(lat, lng)}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-slate-100 active:bg-slate-700"
+        className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-3 py-2 text-xs font-bold text-slate-100 transition-transform active:scale-95 active:bg-slate-700"
       >
         <span aria-hidden>🧍‍♂️</span>
         {t("streetview.button")}

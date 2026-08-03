@@ -4,6 +4,13 @@ import { useState } from "react";
 import { GAUGE_COLORS, GAUGE_STATUS_LABEL } from "@/lib/gauges";
 import { TREND_LABEL } from "@/lib/discharge";
 import type { RiverRow } from "@/lib/rivers";
+import type { WaterTrend } from "@/lib/types";
+
+/** Trend arrow that gently nudges up (rising) or down (falling). */
+function TrendArrow({ trend }: { trend: WaterTrend }) {
+  const cls = trend === "rising" ? "animate-arrow-up" : trend === "falling" ? "animate-arrow-down" : "";
+  return <span className={cls}>{TREND_LABEL[trend].arrow}</span>;
+}
 
 const TIER_CHIP: Record<RiverRow["tier"], { en: string; as: string; cls: string }> = {
   gauged: { en: "Gauged", as: "গেজ", cls: "bg-emerald-900/60 text-emerald-300" },
@@ -50,10 +57,14 @@ export default function NearbyRivers({
       </p>
 
       <ul className="space-y-1.5">
-        {visible.map((r) => {
+        {visible.map((r, i) => {
           const chip = TIER_CHIP[r.tier];
           return (
-            <li key={r.name} className="rounded-lg bg-slate-900/50 px-2 py-1.5 text-[12px]">
+            <li
+              key={r.name}
+              className="animate-row-in rounded-lg bg-slate-900/50 px-2 py-1.5 text-[12px]"
+              style={{ animationDelay: `${Math.min(i, 6) * 45}ms` }}
+            >
               <div className="flex items-baseline justify-between gap-2">
                 <span className="min-w-0 truncate">
                   <span className="font-semibold">{r.name}</span>
@@ -69,14 +80,16 @@ export default function NearbyRivers({
                 {r.gauge ? (
                   <>
                     <span
-                      className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-white ${
+                        r.gauge.status === "danger" || r.gauge.status === "extreme" ? "animate-danger-glow" : ""
+                      }`}
                       style={{ backgroundColor: GAUGE_COLORS[r.gauge.status] }}
                     >
                       {GAUGE_STATUS_LABEL[r.gauge.status].en} · {GAUGE_STATUS_LABEL[r.gauge.status].as}
                     </span>
                     <span className="text-[10px] text-slate-400">
                       {r.gauge.name} · {r.gauge.levelM.toFixed(2)}/{r.gauge.dangerLevelM.toFixed(2)} m ·{" "}
-                      {TREND_LABEL[r.gauge.trend].arrow} {TREND_LABEL[r.gauge.trend].en}
+                      <TrendArrow trend={r.gauge.trend} /> {TREND_LABEL[r.gauge.trend].en}
                       {fmtTime(r.gauge.timestamp) && (
                         <span className="text-slate-500"> · as of {fmtTime(r.gauge.timestamp)}</span>
                       )}
@@ -86,7 +99,7 @@ export default function NearbyRivers({
                   <span className="text-[10px] text-sky-300/90">
                     modelled {r.modelled.currentM3s?.toLocaleString()} m³/s
                     {r.modelled.trend && (
-                      <> · {TREND_LABEL[r.modelled.trend].arrow} {TREND_LABEL[r.modelled.trend].en}</>
+                      <> · <TrendArrow trend={r.modelled.trend} /> {TREND_LABEL[r.modelled.trend].en}</>
                     )}
                     {r.modelled.percentile != null && (
                       <>
@@ -119,7 +132,7 @@ export default function NearbyRivers({
       {rows.length > initial && (
         <button
           onClick={() => setShowAll((v) => !v)}
-          className="mt-1.5 text-[11px] font-semibold text-sky-400 active:text-sky-300"
+          className="mt-1.5 text-[11px] font-semibold text-sky-400 transition-transform active:scale-95 active:text-sky-300"
         >
           {showAll ? "Show less" : `Show ${rows.length - initial} more · আৰু দেখুৱাওক`}
         </button>
