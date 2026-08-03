@@ -11,6 +11,7 @@ import BottomTabs, { type TabKey } from "@/components/BottomTabs";
 import CoachMark from "@/components/CoachMark";
 import TimeSlider from "@/components/TimeSlider";
 import AffectedPanel from "@/components/AffectedPanel";
+import HelpBoard from "@/components/HelpBoard";
 import EmergencyPanel from "@/components/EmergencyPanel";
 import dynamic from "next/dynamic";
 import MyAreaSearch from "@/components/MyAreaSearch";
@@ -50,7 +51,7 @@ interface GeoJson {
   features: { type: "Feature"; properties: District; geometry: unknown }[];
 }
 
-type SheetName = "districts" | "emergency" | null;
+type SheetName = "districts" | "emergency" | "help" | null;
 
 export default function Home() {
   const t = useT();
@@ -447,6 +448,7 @@ export default function Home() {
     (key: TabKey) => {
       if (key === "districts") openSheet("districts");
       else if (key === "emergency") openSheet("emergency");
+      else if (key === "help") openSheet("help");
       else if (key === "rain") toggleRain();
       else if (key === "flood") toggleFlood();
     },
@@ -457,6 +459,7 @@ export default function Home() {
     const s = new Set<TabKey>();
     if (activeSheet === "districts") s.add("districts");
     if (activeSheet === "emergency") s.add("emergency");
+    if (activeSheet === "help") s.add("help");
     if (rainMode) s.add("rain");
     if (floodView) s.add("flood");
     return s;
@@ -614,6 +617,10 @@ export default function Home() {
       )}
 
       {activeSheet === "emergency" && <EmergencyPanel onClose={() => setActiveSheet(null)} />}
+
+      {activeSheet === "help" && (
+        <HelpBoard districts={districtList} onClose={() => setActiveSheet(null)} />
+      )}
 
       {myPlace && (
         <MyAreaPanel

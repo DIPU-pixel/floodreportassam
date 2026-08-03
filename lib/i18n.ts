@@ -29,6 +29,7 @@ export const STRINGS = {
   "tab.rain": { en: "Rain 72h", as: "বৰষুণ" },
   "tab.flood": { en: "Flood", as: "বান" },
   "tab.emergency": { en: "Emergency", as: "জৰুৰী" },
+  "tab.help": { en: "Help", as: "সহায়" },
 
   "search.placeholder": { en: "Search town or district…", as: "চহৰ বা জিলা বিচাৰক…" },
   "search.myLocation": { en: "Use my location", as: "মোৰ অৱস্থান" },

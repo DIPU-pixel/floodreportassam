@@ -2,12 +2,13 @@
 
 import { useT, type StringKey } from "@/lib/i18n";
 
-export type TabKey = "districts" | "rain" | "flood" | "emergency";
+export type TabKey = "districts" | "rain" | "flood" | "help" | "emergency";
 
 const TABS: { key: TabKey; icon: string; label: StringKey }[] = [
   { key: "districts", icon: "☰", label: "tab.districts" },
   { key: "rain", icon: "🌧", label: "tab.rain" },
   { key: "flood", icon: "🌊", label: "tab.flood" },
+  { key: "help", icon: "🆘", label: "tab.help" },
   { key: "emergency", icon: "⚠", label: "tab.emergency" },
 ];
 
