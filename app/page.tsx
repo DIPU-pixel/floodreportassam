@@ -12,6 +12,7 @@ import CoachMark from "@/components/CoachMark";
 import TimeSlider from "@/components/TimeSlider";
 import AffectedPanel from "@/components/AffectedPanel";
 import HelpBoard from "@/components/HelpBoard";
+import type { HelpPin } from "@/lib/helpTypes";
 import EmergencyPanel from "@/components/EmergencyPanel";
 import dynamic from "next/dynamic";
 import MyAreaSearch from "@/components/MyAreaSearch";
@@ -65,6 +66,7 @@ export default function Home() {
   const [towns, setTowns] = useState<Town[]>([]);
   const [rivers, setRivers] = useState<GeoJSON.FeatureCollection | null>(null);
   const [myPlace, setMyPlace] = useState<MyPlace | null>(null);
+  const [helpPins, setHelpPins] = useState<HelpPin[]>([]);
 
   // Stage-4 UI state.
   const [activeSheet, setActiveSheet] = useState<SheetName>(null);
@@ -89,6 +91,22 @@ export default function Home() {
       .then((r) => (r.ok ? r.json() : fetch("/data/assam_rivers.geojson").then((r2) => r2.json())))
       .then((fc) => setRivers(fc as GeoJSON.FeatureCollection))
       .catch(() => {});
+  }, []);
+
+  // Community help requests — plotted on the main map; refreshed periodically.
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      fetch("/api/help", { cache: "no-store" })
+        .then((r) => r.json() as Promise<{ pins?: HelpPin[] }>)
+        .then((d) => alive && setHelpPins(d.pins ?? []))
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
   }, []);
 
   // Bundled gauge stations — the fallback when live CWC data is unavailable.
@@ -534,6 +552,8 @@ export default function Home() {
         pin={myPlace ? { lng: myPlace.lng, lat: myPlace.lat } : null}
         floodByDistrict={floodByDistrict}
         alertRivers={alertRivers}
+        helpPins={helpPins}
+        onHelpTap={() => openSheet("help")}
       />
 
       {/* Atmospheric rain (Three.js) — only when it is ACTUALLY raining now,

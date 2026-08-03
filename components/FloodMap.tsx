@@ -7,6 +7,7 @@ import { GAUGE_COLORS } from "@/lib/gauges";
 import { prettyRiver } from "@/lib/geo";
 import { useT } from "@/lib/i18n";
 import type { DistrictRisk, GaugeMarkerData } from "@/lib/types";
+import { helpTypeLabel, type HelpPin } from "@/lib/helpTypes";
 
 interface Props {
   geo: GeoJSON.FeatureCollection | { type: string } | null;
@@ -25,6 +26,10 @@ interface Props {
   floodByDistrict?: Record<string, number> | null;
   /** River names whose gauges are above danger — these get the red glow. */
   alertRivers?: string[];
+  /** Community help requests to plot on the map (approx location). */
+  helpPins?: HelpPin[];
+  /** Open the full Help board (from a help pin's popup). */
+  onHelpTap?: () => void;
 }
 
 type MapStyle = "map" | "satellite" | "terrain";
@@ -56,6 +61,10 @@ const OSM_ATTR =
 const ESRI_ATTR = "Esri, Maxar, Earthstar Geographics";
 const ESRI_HS_ATTR = "Esri — World Hillshade";
 
+function escHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
+
 // "Moving ants" dash sequence for the animated river flow line.
 const DASH_SEQ: number[][] = [
   [0, 4, 3], [0.5, 4, 2.5], [1, 4, 2], [1.5, 4, 1.5], [2, 4, 1], [2.5, 4, 0.5],
@@ -78,6 +87,8 @@ export default function FloodMap({
   pin,
   floodByDistrict,
   alertRivers,
+  helpPins,
+  onHelpTap,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -87,6 +98,9 @@ export default function FloodMap({
   const onSelectGaugeRef = useRef(onSelectGauge);
   onSelectGaugeRef.current = onSelectGauge;
   const gaugeMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const helpMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const onHelpTapRef = useRef(onHelpTap);
+  onHelpTapRef.current = onHelpTap;
   const pinMarkerRef = useRef<maplibregl.Marker | null>(null);
   const dashRafRef = useRef<number | null>(null);
   const riverClickRef = useRef(0);
@@ -96,6 +110,7 @@ export default function FloodMap({
   const [pitched, setPitched] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [satFlood, setSatFlood] = useState(false);
+  const [showHelp, setShowHelp] = useState(true);
   const [layersOpen, setLayersOpen] = useState(false);
   const t = useT();
 
@@ -680,6 +695,53 @@ export default function FloodMap({
     else map.once("load", apply);
   }, [pin]);
 
+  // Community help requests — 🆘 markers at approx location, toggled from Layers.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      for (const m of helpMarkersRef.current) m.remove();
+      helpMarkersRef.current = [];
+      if (!showHelp || !helpPins || helpPins.length === 0) return;
+      for (const p of helpPins) {
+        const label = helpTypeLabel(p.helpType);
+        const el = document.createElement("div");
+        el.textContent = "🆘";
+        el.title = `${label.en} needed — ${p.district ?? "Assam"}. Tap for details.`;
+        el.style.cssText =
+          "font-size:20px;cursor:pointer;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7))";
+        // Tapping a help pin must NOT also open the district sheet beneath it.
+        el.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          riverClickRef.current = Date.now(); // reuse the district-sheet suppression guard
+        });
+        const popup = new maplibregl.Popup({ offset: 14, maxWidth: "240px" }).setHTML(
+          `<div style="font:13px system-ui;color:#0f172a">
+             <b>${label.icon} ${escHtml(label.en)} needed</b>
+             <div style="margin:2px 0">${escHtml(p.message).slice(0, 140)}</div>
+             <div style="color:#475569;font-size:11px">${escHtml(p.district ?? "Assam")}${p.photoCount ? ` · 📷 ${p.photoCount}` : ""}</div>
+             <button data-hopen="${p.id}" style="margin-top:6px;background:#0284c7;color:#fff;border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer">Open Help board →</button>
+           </div>`
+        );
+        popup.on("open", () => {
+          const btn = document.querySelector<HTMLButtonElement>(`button[data-hopen="${p.id}"]`);
+          if (btn) btn.onclick = () => { popup.remove(); onHelpTapRef.current?.(); };
+        });
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([p.approxLng, p.approxLat])
+          .setPopup(popup)
+          .addTo(map);
+        helpMarkersRef.current.push(marker);
+      }
+    };
+    if (loadedRef.current) apply();
+    else map.once("load", apply);
+    return () => {
+      for (const m of helpMarkersRef.current) m.remove();
+      helpMarkersRef.current = [];
+    };
+  }, [helpPins, showHelp]);
+
   const STYLE_KEYS = { map: "layers.map", satellite: "layers.satellite", terrain: "layers.terrain" } as const;
 
   return (
@@ -718,6 +780,17 @@ export default function FloodMap({
             >
               <span>{t("layers.tilt")}</span>
               <span className="text-[10px]">{pitched ? "3D" : "2D"}</span>
+            </button>
+            {/* Community help requests as 🆘 pins on the main map. */}
+            <button
+              onClick={() => setShowHelp((v) => !v)}
+              aria-pressed={showHelp}
+              className={`mt-1.5 flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${
+                showHelp ? "bg-red-600 text-white" : "bg-slate-800/80 text-slate-200"
+              }`}
+            >
+              <span>🆘 {t("layers.help")}</span>
+              <span className="text-[10px]">{showHelp ? "ON" : "OFF"}</span>
             </button>
             {/* Only when a real flood-extent tile source is configured. */}
             {SATELLITE_FLOOD_TILES !== "" && (

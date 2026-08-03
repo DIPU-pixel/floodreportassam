@@ -17,6 +17,19 @@ body {
 
 .maplibregl-ctrl-attrib { font-size: 10px; }
 
+/* Native <select> dropdown option lists render on a white background in most
+ * browsers — light option text would be white-on-white (invisible). Force
+ * readable dark-on-white options everywhere. The closed control keeps its own
+ * (light-on-dark) styling. */
+select option { color: #0f172a; background-color: #ffffff; }
+
+/* Readability: the dimmest informational text (slate-500/600) was low-contrast
+ * on the dark panels. Lift both to ~slate-400 so footnotes/hints are legible.
+ * All panels use dark backgrounds, so brightening never hurts contrast. These
+ * rules follow @tailwind utilities, so they win by source order. */
+.text-slate-500 { color: #9aa7b8; }
+.text-slate-600 { color: #9aa7b8; }
+
 /* Skeleton loading shimmer */
 .skeleton {
   position: relative;

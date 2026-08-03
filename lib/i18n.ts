@@ -61,6 +61,7 @@ export const STRINGS = {
   "layers.terrain": { en: "Terrain", as: "ভূ-প্ৰকৃতি" },
   "layers.tilt": { en: "3D tilt", as: "ত্ৰিমাত্ৰিক" },
   "layers.floodExtent": { en: "Flood extent", as: "বানৰ বিস্তৃতি" },
+  "layers.help": { en: "Help requests", as: "সহায় অনুৰোধ" },
 
   "streetview.button": { en: "Street View", as: "ৰাস্তাৰ দৃশ্য" },
   "streetview.hint": {
