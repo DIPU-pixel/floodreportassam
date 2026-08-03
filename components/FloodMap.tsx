@@ -61,10 +61,6 @@ const OSM_ATTR =
 const ESRI_ATTR = "Esri, Maxar, Earthstar Geographics";
 const ESRI_HS_ATTR = "Esri — World Hillshade";
 
-function escHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-}
-
 // "Moving ants" dash sequence for the animated river flow line.
 const DASH_SEQ: number[][] = [
   [0, 4, 3], [0.5, 4, 2.5], [1, 4, 2], [1.5, 4, 1.5], [2, 4, 1], [2.5, 4, 0.5],
@@ -707,29 +703,20 @@ export default function FloodMap({
         const label = helpTypeLabel(p.helpType);
         const el = document.createElement("div");
         el.textContent = "🆘";
-        el.title = `${label.en} needed — ${p.district ?? "Assam"}. Tap for details.`;
+        el.title = `${label.en} needed — ${p.district ?? "Assam"}. Tap to open the Help board.`;
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", el.title);
+        // Bigger, obvious tap target with a clear hit area.
         el.style.cssText =
-          "font-size:20px;cursor:pointer;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7))";
-        // Tapping a help pin must NOT also open the district sheet beneath it.
+          "font-size:24px;line-height:1;cursor:pointer;padding:4px;border-radius:9999px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.85))";
+        // Tap opens ONLY the Help board — never the district sheet beneath it.
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
           riverClickRef.current = Date.now(); // reuse the district-sheet suppression guard
-        });
-        const popup = new maplibregl.Popup({ offset: 14, maxWidth: "240px" }).setHTML(
-          `<div style="font:13px system-ui;color:#0f172a">
-             <b>${label.icon} ${escHtml(label.en)} needed</b>
-             <div style="margin:2px 0">${escHtml(p.message).slice(0, 140)}</div>
-             <div style="color:#475569;font-size:11px">${escHtml(p.district ?? "Assam")}${p.photoCount ? ` · 📷 ${p.photoCount}` : ""}</div>
-             <button data-hopen="${p.id}" style="margin-top:6px;background:#0284c7;color:#fff;border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer">Open Help board →</button>
-           </div>`
-        );
-        popup.on("open", () => {
-          const btn = document.querySelector<HTMLButtonElement>(`button[data-hopen="${p.id}"]`);
-          if (btn) btn.onclick = () => { popup.remove(); onHelpTapRef.current?.(); };
+          onHelpTapRef.current?.();
         });
         const marker = new maplibregl.Marker({ element: el })
           .setLngLat([p.approxLng, p.approxLat])
-          .setPopup(popup)
           .addTo(map);
         helpMarkersRef.current.push(marker);
       }
