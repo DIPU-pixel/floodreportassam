@@ -19,6 +19,13 @@ const GAUGE_ITEMS: { key: keyof typeof GAUGE_COLORS; label: StringKey; pulse?: b
   { key: "extreme", label: "gauge.extreme", pulse: true },
 ];
 
+// Support the developer. Paste your Buy Me a Coffee / Ko-fi / UPI / Razorpay
+// link into SUPPORT_URL to show the "Buy me a coffee" button. Leave it empty
+// and only the Contact button shows.
+const SUPPORT_URL = "";
+const DEV_NAME = "Dipankar Chetia";
+const DEV_EMAIL = "dipuchetia240@gmail.com";
+
 /**
  * ONE combined legend, opened from the ⓘ button. Replaces the two always-on
  * legend cards that used to cover a third of a phone screen.
@@ -71,6 +78,32 @@ export default function LegendSheet({ onClose }: { onClose: () => void }) {
           Risk is a modelled estimate from rainfall, 7-day saturation, river discharge and flood
           history — not an official warning.
         </p>
+
+        {/* Support / contact the developer — shown on mobile and desktop. */}
+        <div className="mt-2 border-t border-slate-800 pt-2 text-center">
+          <p className="text-[11px] text-slate-400">
+            Built with <span aria-hidden>❤️</span> by{" "}
+            <span className="font-semibold text-slate-200">{DEV_NAME}</span>
+          </p>
+          <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2">
+            {SUPPORT_URL && (
+              <a
+                href={SUPPORT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-slate-900 shadow active:bg-amber-400"
+              >
+                ☕ Buy me a coffee
+              </a>
+            )}
+            <a
+              href={`mailto:${DEV_EMAIL}`}
+              className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-100 active:bg-slate-700"
+            >
+              ✉ Contact
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );
