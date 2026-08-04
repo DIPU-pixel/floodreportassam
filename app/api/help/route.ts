@@ -32,6 +32,25 @@ const MAX_BYTES = 900 * 1024; // photos are compressed client-side
 const OK_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ASSAM = { latMin: 23.5, latMax: 28.5, lngMin: 88.5, lngMax: 97.5 };
 
+// Cloudflare Turnstile — bot protection. Env-gated: when TURNSTILE_SECRET is
+// unset (e.g. local dev), verification is skipped so posting still works.
+const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET;
+async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
+  if (!TURNSTILE_SECRET) return true; // not configured → don't block
+  if (!token) return false;
+  try {
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret: TURNSTILE_SECRET, response: token, remoteip: ip }),
+    });
+    const data = (await res.json()) as { success?: boolean };
+    return data.success === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(): Promise<NextResponse<HelpListResponse>> {
   if (!helpConfigured()) return NextResponse.json({ configured: false, pins: [] });
   try {
@@ -54,6 +73,12 @@ export async function POST(req: Request) {
     form = await req.formData();
   } catch {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
+
+  // Bot check (skipped when Turnstile isn't configured).
+  const ok = await verifyTurnstile(String(form.get("turnstileToken") ?? ""), ipOf(req));
+  if (!ok) {
+    return NextResponse.json({ error: "Anti-spam check failed — please retry." }, { status: 403 });
   }
 
   const helpType = String(form.get("helpType") ?? "") as HelpType;

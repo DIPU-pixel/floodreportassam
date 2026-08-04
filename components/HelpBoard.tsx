@@ -9,6 +9,7 @@ import { mapsUrl } from "@/lib/maps";
 import { HELP_TYPES, helpTypeLabel, type HelpDetail, type HelpPin, type HelpType } from "@/lib/helpTypes";
 
 const REFRESH_MS = 30_000;
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 function timeAgo(iso: string): string {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -236,6 +237,18 @@ function PostForm({
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cfRef = useRef<HTMLDivElement>(null);
+
+  // Load the Cloudflare Turnstile script once — only when a site key is set.
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || document.querySelector("script[data-turnstile]")) return;
+    const s = document.createElement("script");
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    s.async = true;
+    s.defer = true;
+    s.setAttribute("data-turnstile", "1");
+    document.head.appendChild(s);
+  }, []);
 
   const useGps = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -277,6 +290,10 @@ function PostForm({
     if (!/^[+()\-\s0-9]{4,20}$/.test(phone.trim())) return toast("Enter a valid contact number", "warning");
     if (!loc) return toast("Tap “Use my location” first", "warning");
 
+    const cfToken =
+      cfRef.current?.querySelector<HTMLInputElement>('[name="cf-turnstile-response"]')?.value ?? "";
+    if (TURNSTILE_SITE_KEY && !cfToken) return toast("Please complete the anti-spam check", "warning");
+
     setSubmitting(true);
     const fd = new FormData();
     fd.set("helpType", helpType);
@@ -286,6 +303,7 @@ function PostForm({
     fd.set("district", district);
     fd.set("lat", String(loc.lat));
     fd.set("lng", String(loc.lng));
+    fd.set("turnstileToken", cfToken);
     photos.forEach((b, i) => fd.append("photos", new File([b], `photo-${i}.jpg`, { type: "image/jpeg" })));
 
     try {
@@ -296,6 +314,8 @@ function PostForm({
       onPosted();
     } catch (e) {
       toast((e as Error)?.message || "Could not post — try again", "error");
+      // Turnstile tokens are single-use — reset so the user can retry.
+      (window as unknown as { turnstile?: { reset: () => void } }).turnstile?.reset();
     } finally {
       setSubmitting(false);
     }
@@ -417,6 +437,11 @@ function PostForm({
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => onFiles(e.target.files)} />
         <p className="mt-1 text-[10px] text-slate-500">Up to 3 photos. Compressed on your phone; location tags removed.</p>
       </div>
+
+      {/* Cloudflare Turnstile anti-spam widget — only when a site key is set. */}
+      {TURNSTILE_SITE_KEY && (
+        <div ref={cfRef} className="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} data-theme="dark" />
+      )}
 
       <button
         onClick={submit}
