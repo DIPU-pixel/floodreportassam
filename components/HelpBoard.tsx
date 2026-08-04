@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import DragSheet from "@/components/DragSheet";
 import HelpMap from "@/components/HelpMap";
+import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { compressImage } from "@/lib/imageCompress";
 import { mapsUrl } from "@/lib/maps";
@@ -42,6 +43,7 @@ export default function HelpBoard({
   const [pins, setPins] = useState<HelpPin[]>([]);
   const [loading, setLoading] = useState(true);
   const [revealed, setRevealed] = useState<Record<string, HelpDetail>>({});
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -92,6 +94,8 @@ export default function HelpBoard({
   };
 
   return (
+    <>
+    <Lightbox url={lightbox} onClose={() => setLightbox(null)} />
     <DragSheet onClose={onClose} snap initial="half" ariaLabel="Community help">
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-slate-800 bg-slate-900 p-3">
@@ -184,7 +188,13 @@ export default function HelpBoard({
                         <div className="mt-2 flex gap-2 overflow-x-auto">
                           {d.photoUrls.map((u, i) => (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img key={i} src={u} alt="" className="h-24 w-24 shrink-0 rounded-lg object-cover" />
+                            <img
+                              key={i}
+                              src={u}
+                              alt="Tap to view full photo"
+                              onClick={() => setLightbox(u)}
+                              className="h-24 w-24 shrink-0 cursor-pointer rounded-lg object-cover active:opacity-80"
+                            />
                           ))}
                         </div>
                       )}
@@ -213,6 +223,7 @@ export default function HelpBoard({
         </p>
       </div>
     </DragSheet>
+    </>
   );
 }
 

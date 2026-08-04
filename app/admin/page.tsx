@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AdminHelpItem } from "@/lib/helpBoard";
 import { helpTypeLabel } from "@/lib/helpTypes";
 import { mapsUrl } from "@/lib/maps";
+import Lightbox from "@/components/Lightbox";
 
 type Filter = "open" | "resolved" | "hidden" | "all";
 const STATUS_STYLE: Record<string, string> = {
@@ -27,6 +28,7 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<Filter>("open");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -127,6 +129,7 @@ export default function AdminPage() {
   // ---- Dashboard ----
   return (
     <div className="h-dvh overflow-y-auto bg-slate-950 text-slate-100">
+      <Lightbox url={lightbox} onClose={() => setLightbox(null)} />
       <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-3">
         <h1 className="text-base font-bold">🆘 Help requests — admin</h1>
         <div className="flex items-center gap-2">
@@ -191,7 +194,13 @@ export default function AdminPage() {
                     <div className="mt-2 flex gap-2 overflow-x-auto">
                       {it.photoUrls.map((u, i) => (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img key={i} src={u} alt="" className="h-20 w-20 shrink-0 rounded-lg object-cover" />
+                        <img
+                          key={i}
+                          src={u}
+                          alt="Tap to view / download"
+                          onClick={() => setLightbox(u)}
+                          className="h-20 w-20 shrink-0 cursor-pointer rounded-lg object-cover active:opacity-80"
+                        />
                       ))}
                     </div>
                   )}
