@@ -6,7 +6,7 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://floodreportassam.verce
 // at the sitemap. API routes are non-HTML, so they're excluded from crawling.
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/", disallow: "/api/" },
+    rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/admin"] },
     sitemap: `${SITE}/sitemap.xml`,
     host: SITE,
   };

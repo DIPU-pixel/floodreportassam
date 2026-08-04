@@ -185,3 +185,64 @@ export async function reportPost(id: string): Promise<void> {
     body: JSON.stringify(reports >= 3 ? { reports, status: "hidden" } : { reports }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Admin — used only by the password-gated /admin dashboard (auth enforced in
+// the admin API routes; these functions assume the caller is already authorised).
+// ---------------------------------------------------------------------------
+
+export interface AdminHelpItem extends HelpPin {
+  phone: string;
+  lat: number;
+  lng: number;
+  reports: number;
+  expiresAt: string;
+  photoUrls: string[];
+}
+
+/** Every post (any status), newest first, with full contact + signed photos. */
+export async function listAllForAdmin(limit = 500): Promise<AdminHelpItem[]> {
+  const q = `${URL_BASE}/rest/v1/help_posts?select=*&order=created_at.desc&limit=${limit}`;
+  const res = await fetch(q, { headers: headers(), cache: "no-store" });
+  if (!res.ok) throw new Error(`supabase admin list ${res.status}`);
+  const rows = (await res.json()) as (Row & { expires_at: string })[];
+  return Promise.all(
+    rows.map(async (r) => ({
+      ...toPin(r),
+      phone: r.poster_phone,
+      lat: r.lat,
+      lng: r.lng,
+      reports: r.reports,
+      expiresAt: r.expires_at,
+      photoUrls: (await Promise.all((r.photo_paths ?? []).map((p) => signedUrl(p)))).filter(
+        (u): u is string => !!u
+      ),
+    }))
+  );
+}
+
+/** Admin: set a post's status (open / resolved / hidden). */
+export async function setStatus(id: string, status: "open" | "resolved" | "hidden"): Promise<void> {
+  await fetch(`${URL_BASE}/rest/v1/help_posts?id=eq.${id}`, {
+    method: "PATCH",
+    headers: headers(),
+    body: JSON.stringify({ status }),
+  });
+}
+
+/** Admin: permanently delete a post AND its photos from storage. */
+export async function deletePost(id: string): Promise<void> {
+  // 1) find its photo objects, 2) delete them, 3) delete the row.
+  const res = await fetch(`${URL_BASE}/rest/v1/help_posts?id=eq.${id}&select=photo_paths`, {
+    headers: headers(),
+    cache: "no-store",
+  });
+  const [row] = ((await res.json()) as { photo_paths: string[] }[]) ?? [];
+  for (const path of row?.photo_paths ?? []) {
+    await fetch(`${URL_BASE}/storage/v1/object/${BUCKET}/${path}`, {
+      method: "DELETE",
+      headers: headers(),
+    }).catch(() => {});
+  }
+  await fetch(`${URL_BASE}/rest/v1/help_posts?id=eq.${id}`, { method: "DELETE", headers: headers() });
+}
