@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { getVisitStats, visitsConfigured } from "@/lib/visits";
+import { getDashboard, visitsConfigured } from "@/lib/visits";
 import { adminConfigured, isAdmin } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
-/** Visitor stats for the admin dashboard. Auth required. */
+/** Full visitor analytics for the admin dashboard. Auth required. */
 export async function GET(req: Request) {
   if (!adminConfigured()) return NextResponse.json({ error: "admin disabled" }, { status: 503 });
   if (!isAdmin(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (!visitsConfigured()) return NextResponse.json({ stats: null });
+  if (!visitsConfigured()) return NextResponse.json({ dashboard: null });
   try {
-    return NextResponse.json({ stats: await getVisitStats() });
+    return NextResponse.json({ dashboard: await getDashboard() });
   } catch {
-    return NextResponse.json({ stats: null });
+    return NextResponse.json({ dashboard: null });
   }
 }

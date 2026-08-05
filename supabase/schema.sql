@@ -53,3 +53,24 @@ create table if not exists visits (
 );
 create index if not exists visits_created_idx on visits (created_at);
 alter table visits enable row level security;
+
+-- Aggregation helpers for the admin analytics dashboard (called via the
+-- service key, which bypasses RLS).
+create or replace function visits_daily(days int default 30)
+returns table(day text, count bigint) language sql stable as $$
+  select to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as day, count(*)::bigint
+  from visits where created_at >= (now() - make_interval(days => days))
+  group by 1 order by 1;
+$$;
+
+create or replace function visits_top_referrers(lim int default 8)
+returns table(referrer text, count bigint) language sql stable as $$
+  select coalesce(nullif(referrer, ''), '(direct)') as referrer, count(*)::bigint
+  from visits group by 1 order by 2 desc limit lim;
+$$;
+
+create or replace function visits_top_paths(lim int default 8)
+returns table(path text, count bigint) language sql stable as $$
+  select coalesce(nullif(path, ''), '/') as path, count(*)::bigint
+  from visits group by 1 order by 2 desc limit lim;
+$$;

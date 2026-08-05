@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AdminHelpItem } from "@/lib/helpBoard";
+import type { Dashboard } from "@/lib/visits";
 import { helpTypeLabel } from "@/lib/helpTypes";
 import { mapsUrl } from "@/lib/maps";
 import Lightbox from "@/components/Lightbox";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 
 type Filter = "open" | "resolved" | "hidden" | "all";
 const STATUS_STYLE: Record<string, string> = {
@@ -29,7 +31,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lightbox, setLightbox] = useState<string | null>(null);
-  const [stats, setStats] = useState<{ total: number; today: number; week: number } | null>(null);
+  const [dash, setDash] = useState<Dashboard | null>(null);
+  const [view, setView] = useState<"requests" | "analytics">("requests");
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -49,10 +52,10 @@ export default function AdminPage() {
       const d = (await r.json()) as { items?: AdminHelpItem[] };
       setItems(d.items ?? []);
       setAuthed(true);
-      // Visitor stats (best-effort — never blocks the request list).
+      // Visitor analytics (best-effort — never blocks the request list).
       fetch("/api/admin/stats", { headers: { "x-admin-secret": key }, cache: "no-store" })
         .then((s) => s.json())
-        .then((sd: { stats?: { total: number; today: number; week: number } | null }) => setStats(sd.stats ?? null))
+        .then((sd: { dashboard?: Dashboard | null }) => setDash(sd.dashboard ?? null))
         .catch(() => {});
     } catch {
       setError("Failed to load.");
@@ -151,24 +154,32 @@ export default function AdminPage() {
       <div className="mx-auto max-w-2xl p-4">
         {error && <p className="mb-3 text-xs text-red-400">{error}</p>}
 
-        {/* Visitor stats */}
-        {stats && (
-          <div className="mb-3 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-slate-900 p-2.5">
-              <p className="text-lg font-bold text-sky-400">{stats.total.toLocaleString("en-IN")}</p>
-              <p className="text-[10px] text-slate-400">Total visits 👁</p>
-            </div>
-            <div className="rounded-xl bg-slate-900 p-2.5">
-              <p className="text-lg font-bold text-emerald-400">{stats.today.toLocaleString("en-IN")}</p>
-              <p className="text-[10px] text-slate-400">Today</p>
-            </div>
-            <div className="rounded-xl bg-slate-900 p-2.5">
-              <p className="text-lg font-bold text-amber-400">{stats.week.toLocaleString("en-IN")}</p>
-              <p className="text-[10px] text-slate-400">Last 7 days</p>
-            </div>
-          </div>
-        )}
+        {/* View toggle: help requests vs visitor analytics */}
+        <div className="mb-3 flex gap-1.5">
+          {(["requests", "analytics"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold ${
+                view === v ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-300"
+              }`}
+            >
+              {v === "requests" ? "🆘 Requests" : "📊 Analytics"}
+            </button>
+          ))}
+        </div>
 
+        {view === "analytics" &&
+          (dash ? (
+            <AnalyticsDashboard dash={dash} />
+          ) : (
+            <p className="py-10 text-center text-sm text-slate-400">
+              No analytics yet — visits appear here as people open the site.
+            </p>
+          ))}
+
+        {view === "requests" && (
+          <>
         {/* Filter tabs */}
         <div className="mb-3 flex flex-wrap gap-1.5">
           {(["open", "resolved", "hidden", "all"] as Filter[]).map((f) => (
@@ -259,6 +270,8 @@ export default function AdminPage() {
           Delete removes the request and its photos permanently and clears the pin from the map. Hide keeps
           it in the database but removes it from the public map/list.
         </p>
+          </>
+        )}
       </div>
     </div>
   );
