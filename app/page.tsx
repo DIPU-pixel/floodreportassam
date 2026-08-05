@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FloodMap from "@/components/FloodMap";
 import BottomSheet from "@/components/BottomSheet";
 import GaugeSheet from "@/components/GaugeSheet";
@@ -12,7 +12,9 @@ import CoachMark from "@/components/CoachMark";
 import TimeSlider from "@/components/TimeSlider";
 import AffectedPanel from "@/components/AffectedPanel";
 import HelpBoard from "@/components/HelpBoard";
-import type { HelpPin } from "@/lib/helpTypes";
+import Community from "@/components/Community";
+import { helpTypeLabel, type HelpPin } from "@/lib/helpTypes";
+import { useToast } from "@/components/Toast";
 import EmergencyPanel from "@/components/EmergencyPanel";
 import dynamic from "next/dynamic";
 import MyAreaSearch from "@/components/MyAreaSearch";
@@ -52,7 +54,7 @@ interface GeoJson {
   features: { type: "Feature"; properties: District; geometry: unknown }[];
 }
 
-type SheetName = "districts" | "emergency" | "help" | null;
+type SheetName = "districts" | "emergency" | "help" | "community" | null;
 
 export default function Home() {
   const t = useT();
@@ -67,6 +69,9 @@ export default function Home() {
   const [rivers, setRivers] = useState<GeoJSON.FeatureCollection | null>(null);
   const [myPlace, setMyPlace] = useState<MyPlace | null>(null);
   const [helpPins, setHelpPins] = useState<HelpPin[]>([]);
+  const [communityCount, setCommunityCount] = useState(0);
+  const toast = useToast();
+  const prevPinsRef = useRef<Set<string> | null>(null);
 
   // Two top-level modes: Help (SOS/community, default) and Flood map (prediction).
   const [appMode, setAppMode] = useState<"help" | "flood">("help");
@@ -98,15 +103,48 @@ export default function Home() {
   }, []);
 
   // Community help requests — plotted on the main map; refreshed periodically.
+  // Also raises a throttled, batched toast when NEW requests appear (never on
+  // first load, at most one toast per 60s poll) so helpers notice in real time.
   useEffect(() => {
     let alive = true;
     const load = () =>
       fetch("/api/help", { cache: "no-store" })
         .then((r) => r.json() as Promise<{ pins?: HelpPin[] }>)
-        .then((d) => alive && setHelpPins(d.pins ?? []))
+        .then((d) => {
+          if (!alive) return;
+          const pins = d.pins ?? [];
+          setHelpPins(pins);
+          const prev = prevPinsRef.current;
+          if (prev) {
+            const fresh = pins.filter((p) => !prev.has(p.id));
+            if (fresh.length === 1) {
+              const p = fresh[0];
+              toast(`🆘 New help request · ${helpTypeLabel(p.helpType).en} near ${p.district ?? "Assam"}`, "warning");
+            } else if (fresh.length > 1) {
+              toast(`🆘 ${fresh.length} new help requests nearby`, "warning");
+            }
+          }
+          prevPinsRef.current = new Set(pins.map((p) => p.id));
+        })
         .catch(() => {});
     load();
     const id = setInterval(load, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [toast]);
+
+  // Community post count for the header badge (light poll).
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      fetch("/api/community", { cache: "no-store" })
+        .then((r) => r.json() as Promise<{ posts?: unknown[] }>)
+        .then((d) => alive && setCommunityCount((d.posts ?? []).length))
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 90_000);
     return () => {
       alive = false;
       clearInterval(id);
@@ -496,6 +534,7 @@ export default function Home() {
       else if (key === "post") openHelp("post");
       else if (key === "requests") openHelp("browse");
       else if (key === "helpers") openHelp("helpers");
+      else if (key === "community") openSheet("community");
       else if (key === "rain") toggleRain();
       else if (key === "flood") toggleFlood();
     },
@@ -507,6 +546,7 @@ export default function Home() {
     if (activeSheet === "districts") s.add("districts");
     if (activeSheet === "emergency") s.add("emergency");
     if (activeSheet === "help") s.add(helpTab === "helpers" ? "helpers" : helpTab === "post" ? "post" : "requests");
+    if (activeSheet === "community") s.add("community");
     if (rainMode) s.add("rain");
     if (floodView) s.add("flood");
     return s;
@@ -699,6 +739,8 @@ export default function Home() {
         <HelpBoard districts={districtList} initialMode={helpTab} onClose={() => setActiveSheet(null)} />
       )}
 
+      {activeSheet === "community" && <Community onClose={() => setActiveSheet(null)} />}
+
       {myPlace && (
         <MyAreaPanel
           place={myPlace}
@@ -723,7 +765,7 @@ export default function Home() {
       )}
 
       {/* Single icon tab bar — set depends on the mode. Emergency always present. */}
-      <BottomTabs mode={appMode} active={activeTabs} onSelect={onTab} />
+      <BottomTabs mode={appMode} active={activeTabs} communityCount={communityCount} onSelect={onTab} />
 
       {/* First-run coach mark (once per device). */}
       <CoachMark />

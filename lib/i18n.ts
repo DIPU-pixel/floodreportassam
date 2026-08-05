@@ -37,6 +37,7 @@ export const STRINGS = {
   "tab.needhelp": { en: "Need help", as: "সহায় লাগে" },
   "tab.requests": { en: "Requests", as: "অনুৰোধ" },
   "tab.helpers": { en: "Helpers", as: "সহায়ক" },
+  "tab.community": { en: "Community", as: "আলোচনা" },
   "mode.help": { en: "Help", as: "সহায়" },
   "mode.flood": { en: "Flood map", as: "বান মেপ" },
 

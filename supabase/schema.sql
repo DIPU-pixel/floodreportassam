@@ -59,6 +59,21 @@ create table if not exists helpers (
 create index if not exists helpers_status_idx on helpers (status, created_at);
 alter table helpers enable row level security;
 
+-- Community discussion (threaded). parent_id null = a top-level thread.
+create table if not exists community_posts (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz not null default now(),
+  parent_id   uuid references community_posts(id) on delete cascade,
+  name        text,
+  category    text not null default 'info' check (category in ('info','question','offer','update')),
+  message     text not null check (char_length(message) between 1 and 1000),
+  status      text not null default 'approved' check (status in ('approved','hidden')),
+  reports     int not null default 0
+);
+create index if not exists community_parent_idx on community_posts (parent_id, created_at);
+create index if not exists community_status_idx on community_posts (status, created_at);
+alter table community_posts enable row level security;
+
 -- Simple, free visitor counter (one row per visit). Read only by the admin
 -- dashboard via the service key; RLS stays closed.
 create table if not exists visits (

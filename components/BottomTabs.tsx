@@ -9,12 +9,14 @@ export type TabKey =
   | "emergency"
   | "post"
   | "requests"
-  | "helpers";
+  | "helpers"
+  | "community";
 
 const FLOOD_TABS: { key: TabKey; icon: string; label: StringKey }[] = [
   { key: "districts", icon: "☰", label: "tab.districts" },
   { key: "rain", icon: "🌧", label: "tab.rain" },
   { key: "flood", icon: "🌊", label: "tab.flood" },
+  { key: "community", icon: "💬", label: "tab.community" },
   { key: "emergency", icon: "⚠", label: "tab.emergency" },
 ];
 
@@ -22,20 +24,24 @@ const HELP_TABS: { key: TabKey; icon: string; label: StringKey }[] = [
   { key: "post", icon: "🆘", label: "tab.needhelp" },
   { key: "requests", icon: "📋", label: "tab.requests" },
   { key: "helpers", icon: "🤝", label: "tab.helpers" },
+  { key: "community", icon: "💬", label: "tab.community" },
   { key: "emergency", icon: "⚠", label: "tab.emergency" },
 ];
 
 /**
  * Single bottom bar of icon tabs — the set depends on the app mode (Help vs
- * Flood map). Emergency is permanently tinted red and present in both modes.
+ * Flood map). Community shows a live count badge; Emergency is permanently
+ * tinted red and present in both modes.
  */
 export default function BottomTabs({
   mode,
   active,
+  communityCount = 0,
   onSelect,
 }: {
   mode: "help" | "flood";
   active: Set<TabKey>;
+  communityCount?: number;
   onSelect: (key: TabKey) => void;
 }) {
   const t = useT();
@@ -46,6 +52,7 @@ export default function BottomTabs({
         {tabs.map((tab) => {
           const on = active.has(tab.key);
           const danger = tab.key === "emergency";
+          const community = tab.key === "community";
           return (
             <button
               key={tab.key}
@@ -56,12 +63,23 @@ export default function BottomTabs({
                   ? on
                     ? "bg-red-600 text-white"
                     : "text-red-300 active:bg-red-900/40"
-                  : on
-                    ? "bg-sky-600 text-white"
-                    : "text-slate-300 active:bg-slate-800"
+                  : community
+                    ? on
+                      ? "bg-violet-600 text-white"
+                      : "text-violet-300 active:bg-violet-900/40"
+                    : on
+                      ? "bg-sky-600 text-white"
+                      : "text-slate-300 active:bg-slate-800"
               }`}
             >
-              <span className="text-base leading-none">{tab.icon}</span>
+              <span className="relative text-base leading-none">
+                {tab.icon}
+                {community && communityCount > 0 && (
+                  <span className="absolute -right-2.5 -top-1.5 rounded-full bg-violet-500 px-1 text-[8px] font-bold leading-tight text-white">
+                    {communityCount > 99 ? "99+" : communityCount}
+                  </span>
+                )}
+              </span>
               <span className="text-[10px] font-semibold leading-none">{t(tab.label)}</span>
             </button>
           );
