@@ -8,7 +8,7 @@
  * Rendered visually-hidden (`sr-only`) so it doesn't disturb the map UI, but it
  * is present in the server HTML and fully indexable.
  */
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://floodreportassam.vercel.app";
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://assamfloodwatch.com";
 
 const jsonLd = {
   "@context": "https://schema.org",

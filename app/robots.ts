@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://floodreportassam.vercel.app";
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://assamfloodwatch.com";
 
 // Served at /robots.txt — lets search engines crawl everything and points them
 // at the sitemap. API routes are non-HTML, so they're excluded from crawling.

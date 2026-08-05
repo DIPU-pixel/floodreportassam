@@ -42,7 +42,11 @@
       "Bash(curl -s -X PATCH https://floodreportassam.vercel.app/api/help/8b6ecd4b-5520-4d03-afa2-512c9bb973ec -H 'content-type: application/json' -d '{\"action\":\"resolve\"}')",
       "Bash(tasklist)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(18\\).toString\\('base64url'\\)\\)\")"
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(18\\).toString\\('base64url'\\)\\)\")",
+      "Bash(npm uninstall *)",
+      "Bash(rm -rf .next tsconfig.tsbuildinfo)",
+      "Bash(npm cache *)",
+      "mcp__visualize__read_me"
     ]
   }
 }
