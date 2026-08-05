@@ -7,6 +7,7 @@ import { helpTypeLabel } from "@/lib/helpTypes";
 import { mapsUrl } from "@/lib/maps";
 import Lightbox from "@/components/Lightbox";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
+import AdminHelpers from "@/components/AdminHelpers";
 
 type Filter = "open" | "resolved" | "hidden" | "all";
 const STATUS_STYLE: Record<string, string> = {
@@ -32,7 +33,7 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [dash, setDash] = useState<Dashboard | null>(null);
-  const [view, setView] = useState<"requests" | "analytics">("requests");
+  const [view, setView] = useState<"requests" | "analytics" | "helpers">("requests");
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -156,18 +157,20 @@ export default function AdminPage() {
 
         {/* View toggle: help requests vs visitor analytics */}
         <div className="mb-3 flex gap-1.5">
-          {(["requests", "analytics"] as const).map((v) => (
+          {(["requests", "analytics", "helpers"] as const).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold ${
+              className={`flex-1 rounded-lg px-2 py-2 text-xs font-bold ${
                 view === v ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-300"
               }`}
             >
-              {v === "requests" ? "🆘 Requests" : "📊 Analytics"}
+              {v === "requests" ? "🆘 Requests" : v === "analytics" ? "📊 Analytics" : "🤝 Helpers"}
             </button>
           ))}
         </div>
+
+        {view === "helpers" && <AdminHelpers secret={secret} />}
 
         {view === "analytics" &&
           (dash ? (

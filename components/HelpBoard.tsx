@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import DragSheet from "@/components/DragSheet";
 import HelpMap from "@/components/HelpMap";
+import HelpersDirectory from "@/components/HelpersDirectory";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
 import { compressImage } from "@/lib/imageCompress";
@@ -39,7 +40,7 @@ export default function HelpBoard({
   onClose: () => void;
 }) {
   const toast = useToast();
-  const [mode, setMode] = useState<"browse" | "post">("browse");
+  const [mode, setMode] = useState<"browse" | "post" | "helpers">("browse");
   const [pins, setPins] = useState<HelpPin[]>([]);
   const [loading, setLoading] = useState(true);
   const [revealed, setRevealed] = useState<Record<string, HelpDetail>>({});
@@ -111,22 +112,25 @@ export default function HelpBoard({
           <a href="tel:1079" className="underline">1079</a> / <a href="tel:1077" className="underline">1077</a> /{" "}
           <a href="tel:9711077372" className="underline">NDRF</a>. · সৰকাৰী উদ্ধাৰৰ বাবে ১০৭৯ / ১০৭৭ ত ফোন কৰক।
         </p>
-        {/* Browse / Post toggle */}
+        {/* Requests / Ask / Helpers toggle */}
         <div className="mt-2 flex gap-1.5">
-          {(["browse", "post"] as const).map((m) => (
+          {(["browse", "post", "helpers"] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold ${
+              className={`flex-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${
                 mode === m ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-300"
               }`}
             >
-              {m === "browse" ? "Browse requests · চাওক" : "Ask for help · সহায় বিচাৰক"}
+              {m === "browse" ? "🆘 Requests" : m === "post" ? "Ask help" : "🤝 Helpers"}
             </button>
           ))}
         </div>
       </div>
 
+      {mode === "helpers" ? (
+        <HelpersDirectory districts={districts} />
+      ) : (
       <div className="p-3">
         {mode === "post" ? (
           <PostForm
@@ -222,6 +226,7 @@ export default function HelpBoard({
           Posts auto-expire after 48 h. Contact is shown only when you tap “I can help”. Please do not misuse others’ details.
         </p>
       </div>
+      )}
     </DragSheet>
     </>
   );

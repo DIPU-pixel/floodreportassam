@@ -43,6 +43,22 @@ insert into storage.buckets (id, name, public)
 values ('help-photos', 'help-photos', false)
 on conflict (id) do nothing;
 
+-- Volunteers & NGOs directory — people who OFFER help add their own number.
+create table if not exists helpers (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz not null default now(),
+  kind        text not null check (kind in ('ngo','individual')),
+  name        text not null check (char_length(name) between 1 and 100),
+  phone       text not null check (char_length(phone) between 4 and 20),
+  causes      text[] not null default '{}',   -- rescue/boat/medical/food/water/shelter/other
+  area        text,
+  description text,
+  status      text not null default 'approved' check (status in ('approved','hidden')),
+  reports     int not null default 0
+);
+create index if not exists helpers_status_idx on helpers (status, created_at);
+alter table helpers enable row level security;
+
 -- Simple, free visitor counter (one row per visit). Read only by the admin
 -- dashboard via the service key; RLS stays closed.
 create table if not exists visits (
