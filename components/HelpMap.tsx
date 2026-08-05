@@ -114,7 +114,7 @@ export default function HelpMap({
 
   return (
     <div className="relative">
-      <div ref={ref} className="h-60 w-full overflow-hidden rounded-xl bg-slate-800" />
+      <div ref={ref} className="h-36 w-full overflow-hidden rounded-xl bg-slate-800" />
       <p className="mt-1 text-[10px] text-slate-400">
         Pins show approximate area (~1 km). Tap a pin → “I can help” to see the exact spot + contact.
       </p>

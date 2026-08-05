@@ -34,13 +34,17 @@ function waLink(phone: string): string {
  */
 export default function HelpBoard({
   districts,
+  initialMode = "browse",
   onClose,
 }: {
   districts: { id: string; name: string }[];
+  initialMode?: "browse" | "post" | "helpers";
   onClose: () => void;
 }) {
   const toast = useToast();
-  const [mode, setMode] = useState<"browse" | "post" | "helpers">("browse");
+  const [mode, setMode] = useState<"browse" | "post" | "helpers">(initialMode);
+  // Follow the tab chosen from the bottom bar (Requests vs Helpers) while open.
+  useEffect(() => setMode(initialMode), [initialMode]);
   const [pins, setPins] = useState<HelpPin[]>([]);
   const [loading, setLoading] = useState(true);
   const [revealed, setRevealed] = useState<Record<string, HelpDetail>>({});

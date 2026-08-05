@@ -24,12 +24,21 @@ export const STRINGS = {
     en: "Rain forecast view — modelled, not an official warning",
     as: "বৰষুণৰ পূৰ্বাভাস — আৰ্হিগত, চৰকাৰী সতৰ্কবাণী নহয়",
   },
+  "app.subtitle.help": {
+    en: "Community help & SOS — ask for or offer help",
+    as: "সমুদায়িক সহায় আৰু SOS — সহায় বিচাৰক বা আগবঢ়াওক",
+  },
 
   "tab.districts": { en: "Districts", as: "জিলা" },
   "tab.rain": { en: "Rain 72h", as: "বৰষুণ" },
   "tab.flood": { en: "Flood", as: "বান" },
   "tab.emergency": { en: "Emergency", as: "জৰুৰী" },
   "tab.help": { en: "Help", as: "সহায়" },
+  "tab.needhelp": { en: "Need help", as: "সহায় লাগে" },
+  "tab.requests": { en: "Requests", as: "অনুৰোধ" },
+  "tab.helpers": { en: "Helpers", as: "সহায়ক" },
+  "mode.help": { en: "Help", as: "সহায়" },
+  "mode.flood": { en: "Flood map", as: "বান মেপ" },
 
   "search.placeholder": { en: "Search town or district…", as: "চহৰ বা জিলা বিচাৰক…" },
   "search.myLocation": { en: "Use my location", as: "মোৰ অৱস্থান" },

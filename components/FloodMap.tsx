@@ -30,6 +30,8 @@ interface Props {
   helpPins?: HelpPin[];
   /** Open the full Help board (from a help pin's popup). */
   onHelpTap?: () => void;
+  /** Mute the district risk tint (Help mode) so the 🆘 pins are the focus. */
+  dimRisk?: boolean;
 }
 
 type MapStyle = "map" | "satellite" | "terrain";
@@ -85,6 +87,7 @@ export default function FloodMap({
   alertRivers,
   helpPins,
   onHelpTap,
+  dimRisk,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -282,13 +285,14 @@ export default function FloodMap({
         map.setPaintProperty("district-fill", "fill-color", featureColor);
         // Fade the risk tint as you zoom IN: strong when scanning the whole
         // state, nearly clear when you're looking for your own village/road.
+        const rf = dimRisk ? 0.3 : 1; // Help mode → recessive risk tint.
         map.setPaintProperty("district-fill", "fill-opacity", [
           "interpolate",
           ["linear"],
           ["zoom"],
-          6, isSat ? 0.3 : 0.36,
-          9, isSat ? 0.18 : 0.2,
-          11, isSat ? 0.08 : 0.1,
+          6, (isSat ? 0.3 : 0.36) * rf,
+          9, (isSat ? 0.18 : 0.2) * rf,
+          11, (isSat ? 0.08 : 0.1) * rf,
         ] as unknown as number);
       }
       if (map.getLayer("district-line")) {
@@ -311,7 +315,7 @@ export default function FloodMap({
 
     if (loadedRef.current) apply();
     else map.once("load", apply);
-  }, [geo, risks, selectedId, fillOverride, mapStyle, isDark]);
+  }, [geo, risks, selectedId, fillOverride, mapStyle, isDark, dimRisk]);
 
   // Smooth, eased flyTo (~2s) when jumping to a district or My Area result.
   useEffect(() => {

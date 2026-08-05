@@ -2,32 +2,48 @@
 
 import { useT, type StringKey } from "@/lib/i18n";
 
-export type TabKey = "districts" | "rain" | "flood" | "help" | "emergency";
+export type TabKey =
+  | "districts"
+  | "rain"
+  | "flood"
+  | "emergency"
+  | "post"
+  | "requests"
+  | "helpers";
 
-const TABS: { key: TabKey; icon: string; label: StringKey }[] = [
+const FLOOD_TABS: { key: TabKey; icon: string; label: StringKey }[] = [
   { key: "districts", icon: "☰", label: "tab.districts" },
   { key: "rain", icon: "🌧", label: "tab.rain" },
   { key: "flood", icon: "🌊", label: "tab.flood" },
-  { key: "help", icon: "🆘", label: "tab.help" },
+  { key: "emergency", icon: "⚠", label: "tab.emergency" },
+];
+
+const HELP_TABS: { key: TabKey; icon: string; label: StringKey }[] = [
+  { key: "post", icon: "🆘", label: "tab.needhelp" },
+  { key: "requests", icon: "📋", label: "tab.requests" },
+  { key: "helpers", icon: "🤝", label: "tab.helpers" },
   { key: "emergency", icon: "⚠", label: "tab.emergency" },
 ];
 
 /**
- * Single bottom bar of icon tabs. Emergency is permanently tinted red and is
- * never hidden — it must be one tap away at all times.
+ * Single bottom bar of icon tabs — the set depends on the app mode (Help vs
+ * Flood map). Emergency is permanently tinted red and present in both modes.
  */
 export default function BottomTabs({
+  mode,
   active,
   onSelect,
 }: {
+  mode: "help" | "flood";
   active: Set<TabKey>;
   onSelect: (key: TabKey) => void;
 }) {
   const t = useT();
+  const tabs = mode === "help" ? HELP_TABS : FLOOD_TABS;
   return (
     <nav className="pointer-events-auto absolute inset-x-0 bottom-6 z-30 mx-auto max-w-md px-3">
       <div className="flex overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-900/95 shadow-2xl backdrop-blur">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const on = active.has(tab.key);
           const danger = tab.key === "emergency";
           return (

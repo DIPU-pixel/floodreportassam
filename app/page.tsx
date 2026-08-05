@@ -68,6 +68,10 @@ export default function Home() {
   const [myPlace, setMyPlace] = useState<MyPlace | null>(null);
   const [helpPins, setHelpPins] = useState<HelpPin[]>([]);
 
+  // Two top-level modes: Help (SOS/community, default) and Flood map (prediction).
+  const [appMode, setAppMode] = useState<"help" | "flood">("help");
+  const [helpTab, setHelpTab] = useState<"browse" | "post" | "helpers">("browse");
+
   // Stage-4 UI state.
   const [activeSheet, setActiveSheet] = useState<SheetName>(null);
   const [rainMode, setRainMode] = useState(false);
@@ -420,6 +424,29 @@ export default function Home() {
     setLegendOpen(false);
   }, []);
 
+  // Open the Help board to a specific inner tab (always opens, never toggles).
+  const openHelp = useCallback((tab: "browse" | "post" | "helpers") => {
+    setHelpTab(tab);
+    setActiveSheet("help");
+    setSelectedId(null);
+    setSelectedGaugeId(null);
+    setMyPlace(null);
+    setLegendOpen(false);
+  }, []);
+
+  // Switch the whole app mode — clear everything for a clean transition.
+  const switchMode = useCallback((m: "help" | "flood") => {
+    setAppMode(m);
+    setActiveSheet(null);
+    setSelectedId(null);
+    setSelectedGaugeId(null);
+    setMyPlace(null);
+    setRainMode(false);
+    setFloodView(false);
+    setPlaying(false);
+    setLegendOpen(false);
+  }, []);
+
   const toggleLegend = useCallback(() => {
     setLegendOpen((v) => {
       const next = !v;
@@ -466,22 +493,24 @@ export default function Home() {
     (key: TabKey) => {
       if (key === "districts") openSheet("districts");
       else if (key === "emergency") openSheet("emergency");
-      else if (key === "help") openSheet("help");
+      else if (key === "post") openHelp("post");
+      else if (key === "requests") openHelp("browse");
+      else if (key === "helpers") openHelp("helpers");
       else if (key === "rain") toggleRain();
       else if (key === "flood") toggleFlood();
     },
-    [openSheet, toggleRain, toggleFlood]
+    [openSheet, openHelp, toggleRain, toggleFlood]
   );
 
   const activeTabs = useMemo(() => {
     const s = new Set<TabKey>();
     if (activeSheet === "districts") s.add("districts");
     if (activeSheet === "emergency") s.add("emergency");
-    if (activeSheet === "help") s.add("help");
+    if (activeSheet === "help") s.add(helpTab === "helpers" ? "helpers" : helpTab === "post" ? "post" : "requests");
     if (rainMode) s.add("rain");
     if (floodView) s.add("flood");
     return s;
-  }, [activeSheet, rainMode, floodView]);
+  }, [activeSheet, helpTab, rainMode, floodView]);
 
   const selectFromPanel = useCallback(
     (id: string) => {
@@ -545,15 +574,16 @@ export default function Home() {
         risks={risks}
         onSelect={selectDistrict}
         selectedId={selectedId}
-        gauges={gaugeMarkers}
+        gauges={appMode === "flood" ? gaugeMarkers : []}
         onSelectGauge={selectGauge}
         fillOverride={fillOverride}
         flyTo={flyTo}
         pin={myPlace ? { lng: myPlace.lng, lat: myPlace.lat } : null}
         floodByDistrict={floodByDistrict}
-        alertRivers={alertRivers}
+        alertRivers={appMode === "flood" ? alertRivers : []}
         helpPins={helpPins}
-        onHelpTap={() => openSheet("help")}
+        onHelpTap={() => openHelp("browse")}
+        dimRisk={appMode === "help"}
       />
 
       {/* Atmospheric rain (Three.js) — only when it is ACTUALLY raining now,
@@ -573,11 +603,36 @@ export default function Home() {
       {/* Title bar + area search */}
       {/* Left column only — the top-right stays clear for the map's zoom controls. */}
       <header className="pointer-events-none absolute left-0 top-0 z-10 flex max-w-[min(28rem,calc(100%-5rem))] flex-col gap-2 p-3">
+        {/* Two-mode switch — the primary navigation. Help is the default. */}
+        <div className="pointer-events-auto flex gap-1 rounded-full bg-slate-900/90 p-1 shadow-lg backdrop-blur">
+          {(["help", "flood"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => switchMode(m)}
+              aria-pressed={appMode === m}
+              className={`flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                appMode === m
+                  ? m === "help"
+                    ? "bg-red-600 text-white"
+                    : "bg-sky-600 text-white"
+                  : "text-slate-300"
+              }`}
+            >
+              {m === "help" ? "🆘 " : "🌊 "}
+              {t(m === "help" ? "mode.help" : "mode.flood")}
+            </button>
+          ))}
+        </div>
+
         <div className="pointer-events-auto flex flex-wrap items-center gap-2">
           <div className="rounded-xl bg-slate-900/85 px-3 py-2 shadow-lg backdrop-blur">
             <h1 className="text-sm font-bold leading-tight">{t("app.title")}</h1>
             <p className="text-[11px] text-slate-400">
-              {rainMode ? t("app.subtitle.rain") : t("app.subtitle.risk")}
+              {appMode === "help"
+                ? t("app.subtitle.help")
+                : rainMode
+                  ? t("app.subtitle.rain")
+                  : t("app.subtitle.risk")}
             </p>
           </div>
           <StatusBadge status={status} updatedAt={updatedAt} />
@@ -592,16 +647,18 @@ export default function Home() {
             <span>{t("legend.open")}</span>
           </button>
         </div>
-        {/* Plain-language "what's happening" line — the first thing to read. */}
-        <SituationBar
-          risks={risks}
-          gaugesAboveDanger={aboveDangerGauges.length}
-          aboveDangerGauges={aboveDangerGauges}
-          officialDistricts={frimsById.size}
-          officialDate={frims?.date}
-          rainingNow={isRainingNow}
-          onOpenList={() => openSheet("districts")}
-        />
+        {/* Risk summary — Flood-map mode only (it's prediction context). */}
+        {appMode === "flood" && (
+          <SituationBar
+            risks={risks}
+            gaugesAboveDanger={aboveDangerGauges.length}
+            aboveDangerGauges={aboveDangerGauges}
+            officialDistricts={frimsById.size}
+            officialDate={frims?.date}
+            rainingNow={isRainingNow}
+            onOpenList={() => openSheet("districts")}
+          />
+        )}
 
         {/* Left-aligned, collapsed by default — expands only when tapped. */}
         <MyAreaSearch districts={districtList} towns={towns} onResolve={resolveAndPick} />
@@ -639,7 +696,7 @@ export default function Home() {
       {activeSheet === "emergency" && <EmergencyPanel onClose={() => setActiveSheet(null)} />}
 
       {activeSheet === "help" && (
-        <HelpBoard districts={districtList} onClose={() => setActiveSheet(null)} />
+        <HelpBoard districts={districtList} initialMode={helpTab} onClose={() => setActiveSheet(null)} />
       )}
 
       {myPlace && (
@@ -665,8 +722,8 @@ export default function Home() {
         />
       )}
 
-      {/* Single icon tab bar — Emergency always one tap away. */}
-      <BottomTabs active={activeTabs} onSelect={onTab} />
+      {/* Single icon tab bar — set depends on the mode. Emergency always present. */}
+      <BottomTabs mode={appMode} active={activeTabs} onSelect={onTab} />
 
       {/* First-run coach mark (once per device). */}
       <CoachMark />
