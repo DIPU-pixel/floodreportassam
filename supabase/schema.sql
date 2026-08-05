@@ -42,3 +42,14 @@ alter table help_posts enable row level security;
 insert into storage.buckets (id, name, public)
 values ('help-photos', 'help-photos', false)
 on conflict (id) do nothing;
+
+-- Simple, free visitor counter (one row per visit). Read only by the admin
+-- dashboard via the service key; RLS stays closed.
+create table if not exists visits (
+  id         bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  path       text,
+  referrer   text
+);
+create index if not exists visits_created_idx on visits (created_at);
+alter table visits enable row level security;

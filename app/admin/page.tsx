@@ -29,6 +29,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [stats, setStats] = useState<{ total: number; today: number; week: number } | null>(null);
 
   const load = useCallback(async (key: string) => {
     setLoading(true);
@@ -48,6 +49,11 @@ export default function AdminPage() {
       const d = (await r.json()) as { items?: AdminHelpItem[] };
       setItems(d.items ?? []);
       setAuthed(true);
+      // Visitor stats (best-effort — never blocks the request list).
+      fetch("/api/admin/stats", { headers: { "x-admin-secret": key }, cache: "no-store" })
+        .then((s) => s.json())
+        .then((sd: { stats?: { total: number; today: number; week: number } | null }) => setStats(sd.stats ?? null))
+        .catch(() => {});
     } catch {
       setError("Failed to load.");
     } finally {
@@ -144,6 +150,24 @@ export default function AdminPage() {
 
       <div className="mx-auto max-w-2xl p-4">
         {error && <p className="mb-3 text-xs text-red-400">{error}</p>}
+
+        {/* Visitor stats */}
+        {stats && (
+          <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-slate-900 p-2.5">
+              <p className="text-lg font-bold text-sky-400">{stats.total.toLocaleString("en-IN")}</p>
+              <p className="text-[10px] text-slate-400">Total visits 👁</p>
+            </div>
+            <div className="rounded-xl bg-slate-900 p-2.5">
+              <p className="text-lg font-bold text-emerald-400">{stats.today.toLocaleString("en-IN")}</p>
+              <p className="text-[10px] text-slate-400">Today</p>
+            </div>
+            <div className="rounded-xl bg-slate-900 p-2.5">
+              <p className="text-lg font-bold text-amber-400">{stats.week.toLocaleString("en-IN")}</p>
+              <p className="text-[10px] text-slate-400">Last 7 days</p>
+            </div>
+          </div>
+        )}
 
         {/* Filter tabs */}
         <div className="mb-3 flex flex-wrap gap-1.5">
