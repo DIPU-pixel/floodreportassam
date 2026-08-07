@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import DragSheet from "@/components/DragSheet";
-import HelpMap from "@/components/HelpMap";
 import HelpersDirectory from "@/components/HelpersDirectory";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
@@ -25,6 +24,15 @@ function waLink(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   const intl = digits.length === 10 ? `91${digits}` : digits;
   return `https://wa.me/${intl}`;
+}
+
+function tileUrl(lat: number, lng: number, zoom: number): string {
+  const n = 2 ** zoom;
+  const x = Math.floor(((lng + 180) / 360) * n);
+  const y = Math.floor(
+    ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * n
+  );
+  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
 }
 
 /**
@@ -155,75 +163,93 @@ export default function HelpBoard({
             No open requests right now. · এতিয়া কোনো অনুৰোধ নাই।
           </p>
         ) : (
-          <>
-            {/* Dedicated help map — pins with tooltips; exact spot on reveal. */}
-            <div className="mb-3">
-              <HelpMap pins={pins} reveal={reveal} />
-            </div>
-            <ul className="space-y-2">
+          <ul className="space-y-2">
             {pins.map((p) => {
               const label = helpTypeLabel(p.helpType);
               const d = revealed[p.id];
+              const pinLat = d?.lat ?? p.approxLat;
+              const pinLng = d?.lng ?? p.approxLng;
               return (
-                <li key={p.id} className="rounded-xl bg-slate-800/70 p-2.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold">
-                      {label.icon} {label.en} · {label.as}
+                <li key={p.id} className="overflow-hidden rounded-xl bg-slate-800/70">
+                  {/* Per-card mini map */}
+                  <a
+                    href={mapsUrl(pinLat, pinLng)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative block h-28 w-full bg-slate-700"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={tileUrl(pinLat, pinLng, 11)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl drop-shadow-lg">{label.icon}</span>
+                    <span className="absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold text-white backdrop-blur">
+                      📍 {p.district ?? "Assam"}
                     </span>
-                    <span className="shrink-0 text-[10px] text-slate-500">{timeAgo(p.createdAt)}</span>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-slate-200">{p.message}</p>
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    📍 {p.district ?? "Assam"} · ~{p.approxLat.toFixed(2)}, {p.approxLng.toFixed(2)}
-                    {p.photoCount > 0 && ` · 📷 ${p.photoCount}`}
-                    {p.posterName && ` · ${p.posterName}`}
-                  </p>
+                  </a>
 
-                  {d ? (
-                    <div className="mt-2 rounded-lg bg-slate-900/70 p-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        <a href={`tel:${d.phone}`} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
-                          📞 {d.phone}
-                        </a>
-                        <a href={waLink(d.phone)} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white">
-                          WhatsApp
-                        </a>
-                        <a href={mapsUrl(d.lat, d.lng)} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-bold text-white">
-                          🧭 Directions
-                        </a>
-                      </div>
-                      {d.photoUrls.length > 0 && (
-                        <div className="mt-2 flex gap-2 overflow-x-auto">
-                          {d.photoUrls.map((u, i) => (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              key={i}
-                              src={u}
-                              alt="Tap to view full photo"
-                              onClick={() => setLightbox(u)}
-                              className="h-24 w-24 shrink-0 cursor-pointer rounded-lg object-cover active:opacity-80"
-                            />
-                          ))}
-                        </div>
-                      )}
-                      <div className="mt-2 flex gap-3 text-[11px]">
-                        <button onClick={() => act(p.id, "resolve")} className="font-semibold text-sky-400">✓ Mark resolved</button>
-                        <button onClick={() => act(p.id, "report")} className="font-semibold text-slate-400">⚑ Report</button>
-                      </div>
+                  <div className="p-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold">
+                        {label.icon} {label.en} · {label.as}
+                      </span>
+                      <span className="shrink-0 text-[10px] text-slate-500">{timeAgo(p.createdAt)}</span>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => reveal(p.id)}
-                      className="mt-2 w-full rounded-lg bg-sky-600 px-3 py-2 text-xs font-bold text-white active:bg-sky-700"
-                    >
-                      🤝 I can help — show contact · সহায় কৰিব পাৰোঁ
-                    </button>
-                  )}
+                    <p className="mt-1 whitespace-pre-wrap break-words text-[13px] text-slate-200">{p.message}</p>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      ~{p.approxLat.toFixed(2)}, {p.approxLng.toFixed(2)}
+                      {p.photoCount > 0 && ` · 📷 ${p.photoCount}`}
+                      {p.posterName && ` · ${p.posterName}`}
+                    </p>
+
+                    {d ? (
+                      <div className="mt-2 rounded-lg bg-slate-900/70 p-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          <a href={`tel:${d.phone}`} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
+                            📞 {d.phone}
+                          </a>
+                          <a href={waLink(d.phone)} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-bold text-white">
+                            WhatsApp
+                          </a>
+                          <a href={mapsUrl(d.lat, d.lng)} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-bold text-white">
+                            🧭 Directions
+                          </a>
+                        </div>
+                        {d.photoUrls.length > 0 && (
+                          <div className="mt-2 flex gap-2 overflow-x-auto">
+                            {d.photoUrls.map((u, i) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                key={i}
+                                src={u}
+                                alt="Tap to view full photo"
+                                onClick={() => setLightbox(u)}
+                                className="h-24 w-24 shrink-0 cursor-pointer rounded-lg object-cover active:opacity-80"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        <div className="mt-2 flex gap-3 text-[11px]">
+                          <button onClick={() => act(p.id, "resolve")} className="font-semibold text-sky-400">✓ Mark resolved</button>
+                          <button onClick={() => act(p.id, "report")} className="font-semibold text-slate-400">⚑ Report</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => reveal(p.id)}
+                        className="mt-2 w-full rounded-lg bg-sky-600 px-3 py-2 text-xs font-bold text-white active:bg-sky-700"
+                      >
+                        🤝 I can help — show contact · সহায় কৰিব পাৰোঁ
+                      </button>
+                    )}
+                  </div>
                 </li>
               );
             })}
-            </ul>
-          </>
+          </ul>
         )}
 
         <p className="mt-3 text-[10px] leading-snug text-slate-400">
