@@ -28,7 +28,7 @@ function rateLimited(ip: string): boolean {
 }
 
 const MAX_PHOTOS = 3;
-const MAX_BYTES = 900 * 1024; // photos are compressed client-side
+const MAX_BYTES = 300 * 1024; // photos compressed + WebP client-side (~200 KB target)
 const OK_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ASSAM = { latMin: 23.5, latMax: 28.5, lngMin: 88.5, lngMax: 97.5 };
 

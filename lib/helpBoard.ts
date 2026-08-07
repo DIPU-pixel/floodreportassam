@@ -1,5 +1,6 @@
 /**
- * Server-side data layer for the community help board (Supabase).
+ * Server-side data layer for the community help board (Supabase DB +
+ * pluggable photo storage via photoStorage.ts).
  *
  * All access uses the SERVICE ROLE key and runs only in Route Handlers — the
  * browser never talks to Supabase directly, and Row Level Security stays
@@ -7,10 +8,14 @@
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  */
 import type { HelpPin, HelpDetail, HelpType } from "./helpTypes";
+import {
+  uploadPhoto as storageUpload,
+  signedUrl as storageSignedUrl,
+  deletePhoto as storageDelete,
+} from "./photoStorage";
 
 const URL_BASE = process.env.SUPABASE_URL?.replace(/\/$/, "");
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const BUCKET = "help-photos";
 
 export function helpConfigured(): boolean {
   return Boolean(URL_BASE && SERVICE_KEY);
@@ -109,22 +114,14 @@ export async function createPost(input: CreateInput): Promise<string> {
   return row.id;
 }
 
-/** Upload one photo (already compressed client-side) to the private bucket. */
+/** Upload one photo via the configured storage backend (R2 or Supabase). */
 export async function uploadPhoto(
   postId: string,
   index: number,
   bytes: ArrayBuffer,
   contentType: string
 ): Promise<string> {
-  const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
-  const path = `${postId}/${index}.${ext}`;
-  const res = await fetch(`${URL_BASE}/storage/v1/object/${BUCKET}/${path}`, {
-    method: "POST",
-    headers: { apikey: SERVICE_KEY!, Authorization: `Bearer ${SERVICE_KEY}`, "content-type": contentType },
-    body: bytes,
-  });
-  if (!res.ok) throw new Error(`supabase upload ${res.status}`);
-  return path;
+  return storageUpload(postId, index, bytes, contentType);
 }
 
 /** Attach uploaded photo paths to a post. */
@@ -136,17 +133,6 @@ export async function setPhotoPaths(postId: string, paths: string[]): Promise<vo
   });
 }
 
-async function signedUrl(path: string): Promise<string | null> {
-  const res = await fetch(`${URL_BASE}/storage/v1/object/sign/${BUCKET}/${path}`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify({ expiresIn: 60 * 60 }), // 1 hour
-  });
-  if (!res.ok) return null;
-  const { signedURL } = (await res.json()) as { signedURL: string };
-  return `${URL_BASE}/storage/v1${signedURL}`;
-}
-
 /** Full detail incl. phone + signed photo URLs — the "I can help" reveal. */
 export async function getDetail(id: string): Promise<HelpDetail | null> {
   const q = `${URL_BASE}/rest/v1/help_posts?id=eq.${id}&status=eq.open&select=*&limit=1`;
@@ -156,7 +142,7 @@ export async function getDetail(id: string): Promise<HelpDetail | null> {
   if (!row) return null;
 
   const photoUrls = (
-    await Promise.all((row.photo_paths ?? []).map((p) => signedUrl(p)))
+    await Promise.all((row.photo_paths ?? []).map((p) => storageSignedUrl(p)))
   ).filter((u): u is string => !!u);
 
   return { ...toPin(row), phone: row.poster_phone, lat: row.lat, lng: row.lng, photoUrls };
@@ -187,8 +173,7 @@ export async function reportPost(id: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Admin — used only by the password-gated /admin dashboard (auth enforced in
-// the admin API routes; these functions assume the caller is already authorised).
+// Admin
 // ---------------------------------------------------------------------------
 
 export interface AdminHelpItem extends HelpPin {
@@ -214,7 +199,7 @@ export async function listAllForAdmin(limit = 500): Promise<AdminHelpItem[]> {
       lng: r.lng,
       reports: r.reports,
       expiresAt: r.expires_at,
-      photoUrls: (await Promise.all((r.photo_paths ?? []).map((p) => signedUrl(p)))).filter(
+      photoUrls: (await Promise.all((r.photo_paths ?? []).map((p) => storageSignedUrl(p)))).filter(
         (u): u is string => !!u
       ),
     }))
@@ -232,17 +217,52 @@ export async function setStatus(id: string, status: "open" | "resolved" | "hidde
 
 /** Admin: permanently delete a post AND its photos from storage. */
 export async function deletePost(id: string): Promise<void> {
-  // 1) find its photo objects, 2) delete them, 3) delete the row.
   const res = await fetch(`${URL_BASE}/rest/v1/help_posts?id=eq.${id}&select=photo_paths`, {
     headers: headers(),
     cache: "no-store",
   });
   const [row] = ((await res.json()) as { photo_paths: string[] }[]) ?? [];
   for (const path of row?.photo_paths ?? []) {
-    await fetch(`${URL_BASE}/storage/v1/object/${BUCKET}/${path}`, {
-      method: "DELETE",
-      headers: headers(),
-    }).catch(() => {});
+    await storageDelete(path);
   }
   await fetch(`${URL_BASE}/rest/v1/help_posts?id=eq.${id}`, { method: "DELETE", headers: headers() });
+}
+
+// ---------------------------------------------------------------------------
+// Cleanup — only delete photos from posts resolved/hidden for 3+ days.
+// Expired posts (48 h) stay visible in admin with photos intact — you decide
+// when to delete them manually from the admin dashboard.
+// ---------------------------------------------------------------------------
+
+const CLEANUP_AFTER_DAYS = 3;
+
+export async function listStalePostsWithPhotos(): Promise<{ id: string; photo_paths: string[] }[]> {
+  const cutoff = new Date(Date.now() - CLEANUP_AFTER_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const q =
+    `${URL_BASE}/rest/v1/help_posts?select=id,photo_paths` +
+    `&or=(status.eq.resolved,status.eq.hidden)` +
+    `&created_at=lt.${cutoff}` +
+    `&photo_paths=neq.{}` +
+    `&order=created_at.asc&limit=100`;
+  const res = await fetch(q, { headers: headers(), cache: "no-store" });
+  if (!res.ok) return [];
+  return (await res.json()) as { id: string; photo_paths: string[] }[];
+}
+
+/** Delete photos for resolved/hidden posts older than 3 days. Returns count cleaned. */
+export async function cleanupStalePhotos(): Promise<number> {
+  const stale = await listStalePostsWithPhotos();
+  let cleaned = 0;
+  for (const post of stale) {
+    for (const path of post.photo_paths ?? []) {
+      await storageDelete(path);
+    }
+    await fetch(`${URL_BASE}/rest/v1/help_posts?id=eq.${post.id}`, {
+      method: "PATCH",
+      headers: headers(),
+      body: JSON.stringify({ photo_paths: [] }),
+    });
+    cleaned++;
+  }
+  return cleaned;
 }

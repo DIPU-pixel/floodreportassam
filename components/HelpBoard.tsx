@@ -6,7 +6,7 @@ import HelpMap from "@/components/HelpMap";
 import HelpersDirectory from "@/components/HelpersDirectory";
 import Lightbox from "@/components/Lightbox";
 import { useToast } from "@/components/Toast";
-import { compressImage } from "@/lib/imageCompress";
+import { compressImage, COMPRESS_MIME } from "@/lib/imageCompress";
 import { mapsUrl } from "@/lib/maps";
 import { HELP_TYPES, helpTypeLabel, type HelpDetail, type HelpPin, type HelpType } from "@/lib/helpTypes";
 
@@ -324,7 +324,8 @@ function PostForm({
     fd.set("lat", String(loc.lat));
     fd.set("lng", String(loc.lng));
     fd.set("turnstileToken", cfToken);
-    photos.forEach((b, i) => fd.append("photos", new File([b], `photo-${i}.jpg`, { type: "image/jpeg" })));
+    const ext = COMPRESS_MIME === "image/webp" ? "webp" : "jpg";
+    photos.forEach((b, i) => fd.append("photos", new File([b], `photo-${i}.${ext}`, { type: COMPRESS_MIME })));
 
     try {
       const r = await fetch("/api/help", { method: "POST", body: fd });

@@ -46,7 +46,9 @@
       "Bash(npm uninstall *)",
       "Bash(rm -rf .next tsconfig.tsbuildinfo)",
       "Bash(npm cache *)",
-      "mcp__visualize__read_me"
+      "mcp__visualize__read_me",
+      "Bash(curl -s --max-time 25 \"https://assamfloodwatch.com/sitemap.xml\")",
+      "Bash(curl -s --max-time 25 \"https://assamfloodwatch.com/robots.txt\")"
     ]
   }
 }
