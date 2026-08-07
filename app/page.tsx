@@ -21,6 +21,7 @@ import MyAreaSearch from "@/components/MyAreaSearch";
 import MyAreaPanel from "@/components/MyAreaPanel";
 import SituationBar from "@/components/SituationBar";
 import { useT } from "@/lib/i18n";
+import { useOffline, useRegisterSW } from "@/lib/useOffline";
 
 // Three.js rain loads lazily — only when flood view is first opened, so the
 // base app stays light on cheap phones / slow 4G.
@@ -58,6 +59,8 @@ type SheetName = "districts" | "emergency" | "help" | "community" | null;
 
 export default function Home() {
   const t = useT();
+  const offline = useOffline();
+  useRegisterSW();
   const [geo, setGeo] = useState<GeoJson | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [bundledGauges, setBundledGauges] = useState<GaugeStation[]>([]);
@@ -675,7 +678,7 @@ export default function Home() {
                   : t("app.subtitle.risk")}
             </p>
           </div>
-          <StatusBadge status={status} updatedAt={updatedAt} />
+          <StatusBadge status={offline ? "stale" : status} updatedAt={updatedAt} />
           <LanguageToggle />
           <button
             onClick={toggleLegend}
@@ -687,6 +690,13 @@ export default function Home() {
             <span>{t("legend.open")}</span>
           </button>
         </div>
+        {/* Offline banner */}
+        {offline && (
+          <div className="pointer-events-auto mx-auto mt-1 flex items-center gap-2 rounded-full bg-amber-600/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur animate-pulse">
+            <span className="h-2 w-2 rounded-full bg-white/80" />
+            {t("offline.banner")}
+          </div>
+        )}
         {/* Risk summary — Flood-map mode only (it's prediction context). */}
         {appMode === "flood" && (
           <SituationBar

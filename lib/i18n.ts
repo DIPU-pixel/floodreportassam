@@ -49,6 +49,11 @@ export const STRINGS = {
   "status.live": { en: "LIVE", as: "প্ৰত্যক্ষ" },
   "status.stale": { en: "STALE", as: "পুৰণি" },
   "status.demo": { en: "DEMO", as: "নমুনা" },
+  "status.offline": { en: "OFFLINE", as: "অফলাইন" },
+  "offline.banner": {
+    en: "You are offline — showing last saved data",
+    as: "আপুনি অফলাইন — শেষ সংৰক্ষিত তথ্য দেখুৱাইছে",
+  },
 
   "legend.title": { en: "Map key", as: "মানচিত্ৰৰ সংকেত" },
   "legend.risk": { en: "Flood risk", as: "বানৰ বিপদ" },
